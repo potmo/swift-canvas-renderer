@@ -1,3 +1,3 @@
 # swift-canvas-renderer
 
-A description of this package.
+A swift package for drawing shapes in an infitite canvas

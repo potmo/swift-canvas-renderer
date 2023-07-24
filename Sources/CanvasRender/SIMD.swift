@@ -38,14 +38,13 @@ public extension Vector {
 
 public extension Vector {
     static func normalFromClockwiseVertices(a: Vector, b: Vector, c: Vector) -> Vector {
-        return simd_cross(b - a, c - a).normalized
+        return simd_cross(c - a, b - a).normalized
     }
 }
 
 public extension Vector {
-    func angleBetween(and other: Vector) -> Double {
-        let planeNormal: Vector = [0, 0, 1]
-        return atan2(self.normalized.cross(other.normalized).dot(planeNormal), self.normalized.dot(other.normalized))
+    func angleBetween(and other: Vector, around rotationAxis: Vector = Vector(0, 0, 1)) -> Double {
+        return atan2(self.normalized.cross(other.normalized).dot(rotationAxis), self.normalized.dot(other.normalized))
     }
 
     func angleBetween2(and other: Vector) -> Double {
@@ -96,7 +95,7 @@ public enum AxisPlane {
     func convert(_ vector: Vector) -> Vector2D {
         switch self {
         case .xy:
-            return Vector2D(-vector.x, -vector.y)
+            return Vector2D(vector.x, vector.y)
         case .xz:
             return Vector2D(vector.x, vector.z)
         case .yz:
@@ -131,8 +130,9 @@ public extension Vector {
     }
 
     func projected(onto other: Vector) -> Vector {
-        let otherNormalized = other.normalized
-        return self.dot(otherNormalized) * otherNormalized
+        // let otherNormalized = other.normalized
+        // return self.dot(otherNormalized) * otherNormalized
+        return project(self, other)
     }
 }
 
@@ -159,6 +159,20 @@ public extension Vector {
 
     func inPlane(_ plane: AxisPlane) -> Vector2D {
         return plane.convert(self)
+    }
+}
+
+public extension Vector {
+    func with(x: Double) -> Vector {
+        return Vector(x, y, z)
+    }
+
+    func with(y: Double) -> Vector {
+        return Vector(x, y, z)
+    }
+
+    func with(z: Double) -> Vector {
+        return Vector(x, y, z)
     }
 }
 

@@ -40,4 +40,8 @@ public struct CanvasBuilder {
     public func buildFinalResult(_ component: Component) -> Result {
         return component
     }
+
+    public func buildArray(_ components: [Component]) -> Component {
+        return components.flatMap { $0 }
+    }
 }

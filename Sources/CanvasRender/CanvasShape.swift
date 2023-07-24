@@ -24,6 +24,49 @@ public protocol PartOfPath {
     func drawPartOfPath(in context: CGContext, using transform: CGAffineTransform)
 }
 
+extension Array: DrawableShape where Element: DrawableShape {
+    public func draw(in context: CGContext, using transform: CGAffineTransform) {
+        for shape in self {
+            shape.draw(in: context, using: transform)
+        }
+    }
+}
+
+public struct Shapes: DrawableShape {
+    let shapes: [DrawableShape]
+    public init(shapes: [DrawableShape]) {
+        self.shapes = shapes
+    }
+
+    public func draw(in context: CGContext, using transform: CGAffineTransform) {
+        for shape in shapes {
+            shape.draw(in: context, using: transform)
+        }
+    }
+}
+
+public struct Polygon: DrawableShape {
+    let path: Path
+    public init(vertices: [Vector], closed: Bool = true, renderPlane: AxisPlane) {
+        guard let first = vertices.first else {
+            self.path = Path {
+            }
+            return
+        }
+
+        path = Path(closed: closed) {
+            MoveTo(first, plane: renderPlane)
+            for vertex in vertices.dropFirst() {
+                LineTo(vertex, plane: renderPlane)
+            }
+        }
+    }
+
+    public func draw(in context: CGContext, using transform: CGAffineTransform) {
+        path.draw(in: context, using: transform)
+    }
+}
+
 public struct Path: DrawableShape {
     private let parts: [any PartOfPath]
     private let closed: Bool
@@ -112,7 +155,7 @@ public struct Orbit: DrawableShape, PartOfPath {
 
         context.move(to: point.inPlane(renderPlane).cgPoint.applying(transform))
 
-        for t in stride(from: 0.0, through: 1.0, by: 0.1) {
+        for t in stride(from: 0.0, through: 1.0, by: 0.01) {
             let rot = simd_slerp(.identity, rotation, t)
             let drawPoint = (pivot + rot.act(lever)).inPlane(renderPlane).cgPoint.applying(transform)
             context.addLine(to: drawPoint)
@@ -224,6 +267,10 @@ public struct Arrow: DrawableShape {
         self.init(vector: plane.convert(vector), origo: plane.convert(origo), magnitude: vector.length)
     }
 
+    public init(from: Vector, to: Vector, plane: AxisPlane) {
+        self.init(vector: to - from, origo: from, plane: plane)
+    }
+
     public init(vector: simd_double2, origo: simd_double2 = [0, 0]) {
         self.init(vector: vector, origo: origo, magnitude: vector.length)
     }
@@ -236,6 +283,10 @@ public struct Arrow: DrawableShape {
 
     public func draw(in context: CGContext, using transform: CGAffineTransform) {
         let vector = Vector(x: self.vector.x, y: self.vector.y, z: 0)
+
+        if vector.length == 0 {
+            return
+        }
 
         let wingLengths = magnitude.scaled(by: 0.15)
 

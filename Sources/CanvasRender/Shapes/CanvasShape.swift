@@ -4,7 +4,7 @@ import simd
 import SwiftUI
 
 public protocol DrawableShape {
-    func draw(in context: CGContext, using transform: CGAffineTransform)
+    func draw(in context: RenderContext)
 }
 
 public protocol DrawableObject: DrawableShape {
@@ -12,17 +12,17 @@ public protocol DrawableObject: DrawableShape {
 }
 
 public extension DrawableObject {
-    func draw(in context: CGContext, using transform: CGAffineTransform) {
+    func draw(in context: RenderContext) {
         for shape in self.shapes {
-            shape.draw(in: context, using: transform)
+            shape.draw(in: context)
         }
     }
 }
 
 extension Array: DrawableShape where Element: DrawableShape {
-    public func draw(in context: CGContext, using transform: CGAffineTransform) {
+    public func draw(in context: RenderContext) {
         for shape in self {
-            shape.draw(in: context, using: transform)
+            shape.draw(in: context)
         }
     }
 }
@@ -33,9 +33,9 @@ public struct Shapes: DrawableShape {
         self.shapes = shapes
     }
 
-    public func draw(in context: CGContext, using transform: CGAffineTransform) {
+    public func draw(in context: RenderContext) {
         for shape in shapes {
-            shape.draw(in: context, using: transform)
+            shape.draw(in: context)
         }
     }
 }

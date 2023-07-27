@@ -41,12 +41,18 @@ class Canvas<StateType: ObservableObject>: NSView {
 
     private let maker: any ShapeMaker<StateType>
     private let state: StateType
+    private let renderTransform: RenderTransformer
+    private let canvasSize: Vector2D
 
     init(state: StateType,
-         maker: any ShapeMaker<StateType>) {
+         maker: any ShapeMaker<StateType>,
+         renderTransform: RenderTransformer,
+         canvasSize: Vector2D) {
         self.maker = maker
         self.state = state
-        super.init(frame: .zero)
+        self.renderTransform = renderTransform
+        self.canvasSize = canvasSize
+        super.init(frame: NSRect(x: 0, y: 0, width: canvasSize.x, height: canvasSize.y))
         self.wantsRestingTouches = false
         self.allowedTouchTypes = .indirect
     }
@@ -65,19 +71,24 @@ class Canvas<StateType: ObservableObject>: NSView {
 
         let shapes = self.maker.shapes(from: state)
 
-        guard let context = NSGraphicsContext.current?.cgContext else {
+        guard let cgContext = NSGraphicsContext.current?.cgContext else {
             fatalError("not able to create context for drawing")
         }
 
         // flip y-axis so origin is in top left corner
-        context.concatenate(flipVerticalTransform)
+        cgContext.concatenate(flipVerticalTransform)
 
         let transform = zoomTransform.concatenating(translateTransform)
 
-        context.setStrokeColor(.black)
-        context.setLineWidth(1.0)
+        let context = RenderContext(canvasSize: canvasSize,
+                                    cgContext: cgContext,
+                                    transform2d: transform,
+                                    transform3d: renderTransform)
 
-        shapes.forEach { $0.draw(in: context, using: transform) }
+        cgContext.setStrokeColor(NSColor(context.color).cgColor)
+        cgContext.setLineWidth(context.lineWidth)
+
+        shapes.forEach { $0.draw(in: context) }
 
         // draw shapes in input space
         // context.setStrokeColor(CGColor(red: 0.5, green: 0.5, blue: 0.5, alpha: 1))
@@ -85,11 +96,11 @@ class Canvas<StateType: ObservableObject>: NSView {
 
         if let mousePos = mousePos {
             // draw mouse in screen space
-            context.setLineDash(phase: 0, lengths: [])
-            context.beginPath()
-            context.setStrokeColor(CGColor(red: 0, green: 0, blue: 1, alpha: 1))
-            context.addArc(center: mousePos, radius: 5, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: true)
-            context.strokePath()
+            cgContext.setLineDash(phase: 0, lengths: [])
+            cgContext.beginPath()
+            cgContext.setStrokeColor(CGColor(red: 0, green: 0, blue: 1, alpha: 1))
+            cgContext.addArc(center: mousePos, radius: 5, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: true)
+            cgContext.strokePath()
 
             /*
               // draw mouse in input space

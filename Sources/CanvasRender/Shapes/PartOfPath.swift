@@ -5,5 +5,5 @@ import SwiftUI
 
 
 public protocol PartOfPath {
-    func drawPartOfPath(in context: CGContext, using transform: CGAffineTransform)
+    func drawPartOfPath(in context: RenderContext)
 }

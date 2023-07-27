@@ -13,7 +13,7 @@ public struct Path: DrawableShape {
         self.closed = closed
     }
 
-    public init(closed: Bool = false, points: [Vector2D]) {
+    public init(closed: Bool = false, points: [Vector]) {
         self.init(closed: closed) {
             if let startPoint = points.first {
                 MoveTo(startPoint)
@@ -25,14 +25,14 @@ public struct Path: DrawableShape {
         }
     }
 
-    public func draw(in context: CGContext, using transform: CGAffineTransform) {
-        context.beginPath()
+    public func draw(in context: RenderContext) {
+        context.cgContext.beginPath()
         for part in parts {
-            part.drawPartOfPath(in: context, using: transform)
+            part.drawPartOfPath(in: context)
         }
         if closed {
-            context.closePath()
+            context.cgContext.closePath()
         }
-        context.strokePath()
+        context.cgContext.strokePath()
     }
 }

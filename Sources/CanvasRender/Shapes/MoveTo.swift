@@ -4,18 +4,14 @@ import simd
 import SwiftUI
 
 public struct MoveTo: PartOfPath {
-    let point: simd_double2
+    let point: Vector
 
-    public init(_ point: simd_double2) {
+    public init(_ point: Vector) {
         self.point = point
     }
 
-    public init(_ point: simd_double3, plane: AxisPlane) {
-        self.point = point.inPlane(plane)
-    }
-
-    public func drawPartOfPath(in context: CGContext, using transform: CGAffineTransform) {
-        let a = CGPoint(x: point.x, y: point.y).applying(transform)
-        context.move(to: a)
+    public func drawPartOfPath(in context: RenderContext) {
+        let cgPoint = context.transform(point)
+        context.cgContext.move(to: cgPoint)
     }
 }

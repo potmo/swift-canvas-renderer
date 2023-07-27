@@ -4,32 +4,26 @@ import simd
 import SwiftUI
 
 public struct Circle: DrawableShape {
-    let center: simd_double2
-    let radius: simd_double1
+    let center: Vector
+    let radius: Double
 
-    public init(center: simd_double2, radius: simd_double1) {
+    public init(center: Vector, radius: Double) {
         self.center = center
         self.radius = radius
     }
 
-    public init(center: simd_double3, radius: simd_double1, plane: AxisPlane) {
-        self.center = center.inPlane(plane)
-        self.radius = radius
-    }
-
-    public func draw(in context: CGContext, using transform: CGAffineTransform) {
-        let center = CGPoint(x: center.x, y: center.y).applying(transform)
-
+    public func draw(in context: RenderContext) {
         // compute the x-scaling bit of the transform
-        let transformedRadius = radius * sqrt(Double(transform.a * transform.a + transform.c * transform.c))
+        let transformedRadius = radius * sqrt(Double(context.transform2d.a * context.transform2d.a + context.transform2d.c * context.transform2d.c))
 
-        context.beginPath()
-        context.addArc(center: center,
-                       radius: transformedRadius,
-                       startAngle: 0,
-                       endAngle: .pi * 2,
-                       clockwise: true)
-        context.closePath()
-        context.strokePath()
+        let arc = Arc(center: center,
+                      radius: transformedRadius,
+                      startAngle: 0,
+                      endAngle: .pi * 2)
+        
+        context.cgContext.beginPath()
+        arc.drawPartOfPath(in: context)
+        context.cgContext.closePath()
+        context.cgContext.strokePath()
     }
 }

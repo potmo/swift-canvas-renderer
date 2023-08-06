@@ -22,11 +22,10 @@ struct CanvasRenderer<StateType: ObservableObject>: NSViewRepresentable {
         self.renderTransform = renderTransform
         self.canvasSize = canvasSize
 
-
         let view = Canvas(state: state,
-                           maker: maker,
-                           renderTransform: renderTransform,
-                           canvasSize: canvasSize)
+                          maker: maker,
+                          renderTransform: renderTransform,
+                          canvasSize: canvasSize)
 
         self.cancellable = state.objectWillChange.sink { _ in
             view.setNeedsDisplay(view.bounds)
@@ -37,7 +36,6 @@ struct CanvasRenderer<StateType: ObservableObject>: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         let coordinator = Coordinator()
-
         return coordinator
     }
 

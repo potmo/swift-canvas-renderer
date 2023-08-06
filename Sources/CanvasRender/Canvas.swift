@@ -24,11 +24,11 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     private var mousePos: CGPoint? = nil
-    @AppStorage("zoom") private var zoom = 1.0
+    @AppStorage("zoom_1") private var zoom = 1.0
 
     // workaround to make AppStorage store the translation (it cannot store complex types)
-    @AppStorage("translationX") private var translationX: Double = 0
-    @AppStorage("translationY") private var translationY: Double = 0
+    @AppStorage("translationX_1") private var translationX: Double = 0
+    @AppStorage("translationY_1") private var translationY: Double = 0
     private var translation: simd_double2 {
         set {
             self.translationX = newValue.x
@@ -80,7 +80,7 @@ class Canvas<StateType: ObservableObject>: NSView {
 
         let transform = zoomTransform.concatenating(translateTransform)
 
-        let context = RenderContext(canvasSize: canvasSize,
+        let context = RenderContext(canvasSize: Vector2D(frame.size.width, frame.size.height),
                                     cgContext: cgContext,
                                     transform2d: transform,
                                     transform3d: renderTransform)
@@ -111,6 +111,17 @@ class Canvas<StateType: ObservableObject>: NSView {
              context.strokePath()
               */
         }
+
+        //draw frame
+        cgContext.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
+        cgContext.beginPath()
+        cgContext.move(to: CGPoint(x: 0, y: 0))
+        cgContext.addLine(to: CGPoint(x: frame.size.width, y: 0))
+        cgContext.addLine(to: CGPoint(x: frame.size.width, y: frame.size.height))
+        cgContext.addLine(to: CGPoint(x: 0, y: frame.size.height))
+        cgContext.closePath()
+        cgContext.strokePath()
+
     }
 
     func drawText(context: CGContext, text: String, position: CGPoint) {

@@ -197,3 +197,84 @@ public extension Quat {
         return Quat(vector: simd_double4(x: 0, y: 0, z: 0, w: 1))
     }
 }
+
+public extension simd_double4x4 {
+    init(pitch: Double, jaw: Double, roll: Double) {
+        // positive angles are clockwise
+        let pitchRotation = simd_double4x4(rows: [
+            simd_double4(1, 0, 0, 0),
+            simd_double4(0, cos(pitch), sin(pitch), 0),
+            simd_double4(0, -sin(pitch), cos(pitch), 0),
+            simd_double4(0, 0, 0, 1),
+        ])
+
+        let jawRotation = simd_double4x4(rows: [
+            simd_double4(cos(jaw), 0, -sin(jaw), 0),
+            simd_double4(0, 1, 0, 0),
+            simd_double4(sin(jaw), 0, cos(jaw), 0),
+            simd_double4(0, 0, 0, 1),
+        ])
+
+        let rollRotation = simd_double4x4(rows: [
+            simd_double4(cos(roll), -sin(roll), 0, 0),
+            simd_double4(sin(roll), 1, 0, 0),
+            simd_double4(0, 0, 1, 0),
+            simd_double4(0, 0, 0, 1),
+        ])
+
+        // rotate y,z,x here?
+        self = jawRotation * rollRotation * pitchRotation
+    }
+
+    init(translate translation: simd_double3) {
+        self = simd_double4x4(rows: [
+            simd_double4(1, 0, 0, translation.x),
+            simd_double4(0, 1, 0, translation.y),
+            simd_double4(0, 0, 1, translation.z),
+            simd_double4(0, 0, 0, 1),
+        ])
+    }
+
+    init(scale: simd_double1) {
+        self = simd_double4x4(rows: [
+            simd_double4(scale, 0, 0, 0),
+            simd_double4(0, scale, 0, 0),
+            simd_double4(0, 0, scale, 0),
+            simd_double4(0, 0, 0, scale),
+        ])
+    }
+}
+
+public extension simd_double3x3 {
+    init(pitch: Double, jaw: Double, roll: Double) {
+        // positive angles are clockwise
+        let pitchRotation = simd_double3x3(rows: [
+            simd_double3(1, 0, 0),
+            simd_double3(0, cos(pitch), sin(pitch)),
+            simd_double3(0, -sin(pitch), cos(pitch)),
+        ])
+
+        let jawRotation = simd_double3x3(rows: [
+            simd_double3(cos(jaw), 0, -sin(jaw)),
+            simd_double3(0, 1, 0),
+            simd_double3(sin(jaw), 0, cos(jaw)),
+        ])
+
+        let rollRotation = simd_double3x3(rows: [
+            simd_double3(cos(roll), -sin(roll), 0),
+            simd_double3(sin(roll), 1, 0),
+            simd_double3(0, 0, 1),
+        ])
+
+        // rotate y,z,x here?
+        self = jawRotation * pitchRotation * rollRotation
+     //   self = pitchRotation * jawRotation * rollRotation
+    }
+}
+
+public extension Quat {
+    init(pitch: Double, jaw: Double, roll: Double) {
+        let matrix = simd_double3x3(pitch: pitch, jaw: jaw, roll: roll)
+        self = Quat(matrix)
+    }
+}

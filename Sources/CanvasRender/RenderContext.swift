@@ -67,6 +67,61 @@ public struct AxisAlignedOrthographicTransform: RenderTransformer {
     }
 }
 
+public struct OrthographicTransform: RenderTransformer {
+    private let camera: PerspectiveCamera
+    public init(camera: PerspectiveCamera) {
+        self.camera = camera
+    }
+
+    public var cameraDirection: Vector {
+        return camera.rotation.act(Vector(0, 1, 0))
+    }
+
+    public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
+        let projectionMatrix = orthoProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 0, zFar: 800)
+        let modelViewMatrix = viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
+        let worldPosition = translationMatrix(pos: point)
+        let clipSpace = projectionMatrix * modelViewMatrix * worldPosition
+        let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize * 0.5
+
+        return screenSpace
+    }
+
+    private func translationMatrix(pos: Vector) -> simd_double4x4 {
+        return simd_double4x4(rows: [
+            simd_double4(1, 0, 0, pos.x),
+            simd_double4(0, 1, 0, pos.y),
+            simd_double4(0, 0, 1, pos.z),
+            simd_double4(0, 0, 0, 1),
+        ])
+    }
+
+    private func viewSpaceMatrix(eye: Vector, rotation: Quat) -> simd_double4x4 {
+        let right = rotation.inverse.act(Vector(1, 0, 0))
+        let forward = rotation.inverse.act(Vector(0, 1, 0))
+        let up = rotation.inverse.act(Vector(0, 0, 1))
+
+        let vewMatrix = simd_double4x4(rows: [
+            simd_double4(right.x, forward.x, up.x, eye.x), // simd_double4(right.x, up.x, forward.x, eye.x),
+            simd_double4(right.y, forward.y, up.y, eye.y), // simd_double4(right.y, up.y, forward.y, eye.y),
+            simd_double4(right.z, forward.z, up.z, eye.z), // simd_double4(right.z, up.z, forward.z, eye.z),
+            simd_double4(0, 0, 0, 1),
+        ])
+        return vewMatrix
+    }
+
+    private func orthoProjectionMatrix(width: Double, height: Double, zNear: Double, zFar: Double) -> simd_double4x4 {
+        let aspect = 1.0
+        let orthoMatrix = simd_double4x4(rows: [
+            simd_double4(1 / aspect / width, 0, 0, 0),
+            simd_double4(0, 1 / height, 0, 0),
+            simd_double4(0, 0, -(2 / (zFar - zNear)), -(((zFar + zNear) * 2) / (zFar - zNear))),
+            simd_double4(0, 0, 0, 1),
+        ])
+        return orthoMatrix
+    }
+}
+
 public protocol PerspectiveCamera {
     var rotation: Quat { get }
     var position: Vector { get }
@@ -88,7 +143,11 @@ public struct PerspectiveTransform: RenderTransformer {
 
         // transform into opgl coordinates
         let eyePosition = Vector(x: camera.position.x, y: camera.position.z, z: -camera.position.y)
-        let viewMatrix = lookDirection(eye: eyePosition, direction: camera.rotation.act(Vector(0, 0, -1)), up: [0, 1, 0])
+        let cameraDirection = camera.rotation.act(Vector(0, 1, 0))
+        let viewMatrix = lookDirection(eye: eyePosition, direction: Vector(x: cameraDirection.x,
+                                                                           y: cameraDirection.z,
+                                                                           z: -cameraDirection.y),
+                                       up: [0, 1, 0])
         // let viewMatrix = lookAt(eye: cameraPosition, center: [0, 0, 0], up: [0, 1, 0])
         // let rasterCoordinate = perspectiveMatrix * viewMatrix
 
@@ -207,6 +266,7 @@ public struct PerspectiveTransform: RenderTransformer {
         result[3][0] = -dot(s, eye)
         result[3][1] = -dot(u, eye)
         result[3][2] = dot(f, eye)
+
         return result
     }
 

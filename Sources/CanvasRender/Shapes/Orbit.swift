@@ -16,7 +16,8 @@ public struct Orbit: DrawableShape, PartOfPath {
 
     public init(center: simd_double3, radius: Double, startAngle: Double, endAngle: Double, planeNormal: Vector) {
         self.pivot = center
-        self.point = Quat(angle: startAngle, axis: planeNormal).act(Vector(radius, 0, 0))
+        let lever = planeNormal.arbitraryOrthogonal
+        self.point = Quat(angle: startAngle, axis: planeNormal).act(lever)
         self.rotation = Quat(angle: endAngle - startAngle, axis: planeNormal)
     }
 

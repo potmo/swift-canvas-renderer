@@ -17,33 +17,60 @@ public struct Arrow: DrawableShape {
     }
 
     public func draw(in context: RenderContext) {
+        let wingLengths = vector.length.scaled(by: 0.15)
+
+        // convert to xy plane
+        let vector2d = context.transform3d.apply(point: vector, canvasSize: context.canvasSize)
+
+        if vector2d.length == 0 {
+            return
+        }
+
+        let perp = vector.arbitraryOrthogonal //vector.normalized.cross(-context.transform3d.cameraDirection).normalized
+
+        if perp.length.isNaN {
+            return
+        }
+
+        // let up = Vector(0, 0, 1)
         /*
-         let wingLengths = vector.length.scaled(by: 0.15)
-
-         // convert to xy plane
-         let vector2d = context.transform3d.apply(point: vector)
-
-         if vector2d.length == 0 {
-             return
+         if vector.normalized.dot(up) == 1.0 {
+             perp = vector.normalized.cross(Vector(1, 0, 0))
+         } else {
+             perp = vector.normalized.cross(up)
          }
+          */
 
-         let arrowLeftSide = vector.normalized.scaled(by: wingLengths).rotated(by: Quat(angle: 170.degreesToRadians, axis: Vector(0, 0, 1)))
-         let arrowRightSide = vector.normalized.scaled(by: wingLengths).rotated(by: Quat(angle: -170.degreesToRadians, axis: Vector(0, 0, 1)))
+        let arrowSide = vector.normalized.scaled(by: wingLengths).rotated(by: Quat(angle: 170.degreesToRadians, axis: perp))
 
-         let base = context.transform(origo)
-         let tip2d = origo + vector2d
-         let arrowLeftSide2d = arrowLeftSide.xy
-         let arrowRightSide2d = arrowRightSide.xy
+        let sides = stride(from: 0, to: .pi * 2, by: .pi * 2 / 4).map{ angle in
+            return arrowSide.rotated(by: Quat(angle: angle, axis: vector.normalized))
+        }
+        //let arrowRightSide = vector.normalized.scaled(by: wingLengths).rotated(by: Quat(angle: -170.degreesToRadians, axis: perp))
 
-         // FIXME: maybe use this with path and somehow transform the wings to always face the camera?
-         context.cgContext.beginPath()
-         context.cgContext.move(to: base.cgPoint.applying(context.transform2d))
-         context.cgContext.addLine(to: tip2d.cgPoint.applying(context.transform2d))
-         context.cgContext.addLine(to: (tip2d + arrowRightSide2d).cgPoint.applying(context.transform2d))
-         context.cgContext.move(to: tip2d.cgPoint.applying(context.transform2d))
-         context.cgContext.addLine(to: (tip2d + arrowLeftSide2d).cgPoint.applying(context.transform2d))
-         context.cgContext.strokePath()
+        Path {
+            MoveTo(origo)
+            for side in sides {
+                LineTo(origo + vector)
+                LineTo(origo + vector + side)
+            }
+        }.draw(in: context)
+
+        /*
+                let base = context.transform(origo)
+                let tip2d = origo + vector2d
+                let arrowLeftSide2d = arrowLeftSide.xy
+                let arrowRightSide2d = arrowRightSide.xy
+
+                context.cgContext.beginPath()
+                context.cgContext.move(to: base.cgPoint.applying(context.transform2d))
+                context.cgContext.addLine(to: tip2d.cgPoint.applying(context.transform2d))
+                context.cgContext.addLine(to: (tip2d + arrowRightSide2d).cgPoint.applying(context.transform2d))
+                context.cgContext.move(to: tip2d.cgPoint.applying(context.transform2d))
+                context.cgContext.addLine(to: (tip2d + arrowLeftSide2d).cgPoint.applying(context.transform2d))
+                context.cgContext.strokePath()
          */
-        LineSection(from: origo, to: origo + vector).draw(in: context)
+
+        // LineSection(from: origo, to: origo + vector).draw(in: context)
     }
 }

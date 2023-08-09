@@ -13,16 +13,10 @@ public struct Circle: DrawableShape {
     }
 
     public func draw(in context: RenderContext) {
-        // compute the x-scaling bit of the transform
-        let transformedRadius = radius * sqrt(Double(context.transform2d.a * context.transform2d.a + context.transform2d.c * context.transform2d.c))
+        let transformedCenter = context.transform(center)
 
-        let arc = Arc(center: center,
-                      radius: transformedRadius,
-                      startAngle: 0,
-                      endAngle: .pi * 2)
-        
         context.cgContext.beginPath()
-        arc.drawPartOfPath(in: context)
+        context.cgContext.addArc(center: transformedCenter, radius: radius, startAngle: 0, endAngle: .pi * 2, clockwise: true)
         context.cgContext.closePath()
         context.cgContext.strokePath()
     }

@@ -176,6 +176,16 @@ public extension Vector {
     }
 }
 
+public extension Vector {
+    var arbitraryOrthogonal: Vector {
+        let majorX = (self.x < self.y) && (self.x < self.z) ? 1.0 : 0.0
+        let majorY = (self.y <= self.x) && (self.y < self.z) ? 1.0 : 0.0
+        let majorZ = (self.z <= self.x) && (self.z <= self.y) ? 1.0 : 0.0
+
+        return self.normalized.cross(Vector(majorX, majorY, majorZ))
+    }
+}
+
 public extension Vector2D {
     var cgPoint: CGPoint {
         return CGPoint(x: x, y: y)
@@ -268,7 +278,7 @@ public extension simd_double3x3 {
 
         // rotate y,z,x here?
         self = jawRotation * pitchRotation * rollRotation
-     //   self = pitchRotation * jawRotation * rollRotation
+        //   self = pitchRotation * jawRotation * rollRotation
     }
 }
 

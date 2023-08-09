@@ -29,6 +29,8 @@ public struct Arc: DrawableShape, PartOfPath {
                           endAngle: endAngle,
                           planeNormal: -context.transform3d.cameraDirection)
 
+        let rotation = Quat(from: Vector(0, 1, 0), to: context.transform3d.cameraDirection)
+
         orbit.drawPartOfPath(in: context)
     }
 }

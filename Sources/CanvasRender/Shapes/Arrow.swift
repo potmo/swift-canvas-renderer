@@ -26,27 +26,14 @@ public struct Arrow: DrawableShape {
             return
         }
 
-        let perp = vector.arbitraryOrthogonal //vector.normalized.cross(-context.transform3d.cameraDirection).normalized
+        let arrowRotation = Quat(from: Vector(0, 0, 1), to: vector.normalized)
+        let wing = Vector(0, 0, wingLengths)
+            .rotated(by: Quat(angle: 170.degreesToRadians, axis: Vector(0, 1, 0)))
+            .rotated(by: arrowRotation)
 
-        if perp.length.isNaN {
-            return
+        let sides = stride(from: 0, to: .pi * 2, by: .pi * 2 / 4).map { angle in
+            return wing.rotated(by: Quat(angle: angle, axis: vector.normalized))
         }
-
-        // let up = Vector(0, 0, 1)
-        /*
-         if vector.normalized.dot(up) == 1.0 {
-             perp = vector.normalized.cross(Vector(1, 0, 0))
-         } else {
-             perp = vector.normalized.cross(up)
-         }
-          */
-
-        let arrowSide = vector.normalized.scaled(by: wingLengths).rotated(by: Quat(angle: 170.degreesToRadians, axis: perp))
-
-        let sides = stride(from: 0, to: .pi * 2, by: .pi * 2 / 4).map{ angle in
-            return arrowSide.rotated(by: Quat(angle: angle, axis: vector.normalized))
-        }
-        //let arrowRightSide = vector.normalized.scaled(by: wingLengths).rotated(by: Quat(angle: -170.degreesToRadians, axis: perp))
 
         Path {
             MoveTo(origo)
@@ -55,22 +42,5 @@ public struct Arrow: DrawableShape {
                 LineTo(origo + vector + side)
             }
         }.draw(in: context)
-
-        /*
-                let base = context.transform(origo)
-                let tip2d = origo + vector2d
-                let arrowLeftSide2d = arrowLeftSide.xy
-                let arrowRightSide2d = arrowRightSide.xy
-
-                context.cgContext.beginPath()
-                context.cgContext.move(to: base.cgPoint.applying(context.transform2d))
-                context.cgContext.addLine(to: tip2d.cgPoint.applying(context.transform2d))
-                context.cgContext.addLine(to: (tip2d + arrowRightSide2d).cgPoint.applying(context.transform2d))
-                context.cgContext.move(to: tip2d.cgPoint.applying(context.transform2d))
-                context.cgContext.addLine(to: (tip2d + arrowLeftSide2d).cgPoint.applying(context.transform2d))
-                context.cgContext.strokePath()
-         */
-
-        // LineSection(from: origo, to: origo + vector).draw(in: context)
     }
 }

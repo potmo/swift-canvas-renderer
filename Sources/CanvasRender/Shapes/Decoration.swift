@@ -80,5 +80,13 @@ public struct Decoration: DrawableShape {
     public enum LineStyle: Equatable {
         case solid
         case dashed(phase: Double = 2, lengths: [Double] = [2, 2])
+
+        public static var regularDash: LineStyle {
+            return dashed(phase: 0, lengths: [2, 2])
+        }
+
+        public static var bendDash: LineStyle {
+            return dashed(phase: 0, lengths: [5, 2])
+        }
     }
 }

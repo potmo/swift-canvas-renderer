@@ -4,7 +4,7 @@ import simd
 import SwiftUI
 
 public struct RenderContext {
-    let cgContext: CGContext
+    let renderTarget: RenderTarget
     let color: Color
     let lineWidth: Double
     let lineStyle: Decoration.LineStyle
@@ -12,9 +12,9 @@ public struct RenderContext {
     let transform3d: RenderTransformer
     let canvasSize: Vector2D
 
-    init(canvasSize: Vector2D, cgContext: CGContext, color: Color, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
+    init(canvasSize: Vector2D, renderTarget: RenderTarget, color: Color, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
         self.canvasSize = canvasSize
-        self.cgContext = cgContext
+        self.renderTarget = renderTarget
         self.color = color
         self.lineWidth = lineWidth
         self.lineStyle = lineStyle
@@ -22,9 +22,9 @@ public struct RenderContext {
         self.transform3d = transform3d
     }
 
-    init(canvasSize: Vector2D, cgContext: CGContext, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
+    init(canvasSize: Vector2D, renderTarget: RenderTarget, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
         self.canvasSize = canvasSize
-        self.cgContext = cgContext
+        self.renderTarget = renderTarget
         self.color = .black
         self.lineWidth = 1
         self.lineStyle = .solid

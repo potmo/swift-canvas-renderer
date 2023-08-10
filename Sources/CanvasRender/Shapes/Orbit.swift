@@ -22,20 +22,20 @@ public struct Orbit: DrawableShape, PartOfPath {
     }
 
     public func draw(in context: RenderContext) {
-        context.cgContext.beginPath()
+        context.renderTarget.beginPath()
         drawPartOfPath(in: context)
-        context.cgContext.strokePath()
+        context.renderTarget.strokePath()
     }
 
     public func drawPartOfPath(in context: RenderContext) {
         let lever = point - pivot
 
-        context.cgContext.move(to: context.transform(point))
+        context.renderTarget.move(to: context.transform(point))
 
         for t in stride(from: 0.0, through: 1.0, by: 0.01) {
             let rot = simd_slerp(.identity, rotation, t)
             let drawPoint = (pivot + rot.act(lever))
-            context.cgContext.addLine(to: context.transform(drawPoint))
+            context.renderTarget.addLine(to: context.transform(drawPoint))
         }
     }
 }

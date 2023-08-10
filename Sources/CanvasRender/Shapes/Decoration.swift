@@ -22,9 +22,9 @@ public struct Decoration: DrawableShape {
         if let lineStyle, context.lineStyle != lineStyle {
             switch lineStyle {
             case .solid:
-                context.cgContext.setLineDash(phase: 0, lengths: [])
+                context.renderTarget.setLineDash(phase: 0, lengths: [])
             case let .dashed(phase, lengths):
-                context.cgContext.setLineDash(phase: CGFloat(phase), lengths: lengths.map { CGFloat($0) })
+                context.renderTarget.setLineDash(phase: CGFloat(phase), lengths: lengths.map { CGFloat($0) })
             }
 
             resetLineStyle = context.lineStyle
@@ -35,7 +35,7 @@ public struct Decoration: DrawableShape {
         // set color
         let resetColor: Color?
         if let color, context.color != color {
-            context.cgContext.setStrokeColor(NSColor(color).cgColor)
+            context.renderTarget.setStrokeColor(NSColor(color).cgColor)
             resetColor = context.color
         } else {
             resetColor = nil
@@ -43,14 +43,14 @@ public struct Decoration: DrawableShape {
 
         let resetLineWidth: Double?
         if let lineWidth, context.lineWidth != lineWidth {
-            context.cgContext.setLineWidth(CGFloat(lineWidth))
+            context.renderTarget.setLineWidth(CGFloat(lineWidth))
             resetLineWidth = context.lineWidth
         } else {
             resetLineWidth = nil
         }
 
         let newContext = RenderContext(canvasSize: context.canvasSize,
-                                       cgContext: context.cgContext,
+                                       renderTarget: context.renderTarget,
                                        color: color ?? context.color,
                                        lineWidth: lineWidth ?? context.lineWidth,
                                        lineStyle: lineStyle ?? context.lineStyle,
@@ -63,16 +63,16 @@ public struct Decoration: DrawableShape {
 
         // reset color
         if let resetColor {
-            context.cgContext.setStrokeColor(NSColor(resetColor).cgColor)
+            context.renderTarget.setStrokeColor(NSColor(resetColor).cgColor)
         }
 
         // reset linestyle
         if let resetLineStyle {
             switch resetLineStyle {
             case .solid:
-                context.cgContext.setLineDash(phase: 0, lengths: [])
+                context.renderTarget.setLineDash(phase: 0, lengths: [])
             case let .dashed(phase, lengths):
-                context.cgContext.setLineDash(phase: CGFloat(phase), lengths: lengths.map { CGFloat($0) })
+                context.renderTarget.setLineDash(phase: CGFloat(phase), lengths: lengths.map { CGFloat($0) })
             }
         }
     }

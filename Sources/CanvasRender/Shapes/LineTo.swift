@@ -12,6 +12,6 @@ public struct LineTo: PartOfPath {
 
     public func drawPartOfPath(in context: RenderContext) {
         let cgPoint = context.transform(point)
-        context.cgContext.addLine(to: cgPoint)
+        context.renderTarget.addLine(to: cgPoint)
     }
 }

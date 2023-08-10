@@ -12,6 +12,6 @@ public struct MoveTo: PartOfPath {
 
     public func drawPartOfPath(in context: RenderContext) {
         let cgPoint = context.transform(point)
-        context.cgContext.move(to: cgPoint)
+        context.renderTarget.move(to: cgPoint)
     }
 }

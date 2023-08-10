@@ -81,7 +81,7 @@ class Canvas<StateType: ObservableObject>: NSView {
         let transform = zoomTransform.concatenating(translateTransform)
 
         let context = RenderContext(canvasSize: Vector2D(frame.size.width, frame.size.height),
-                                    cgContext: cgContext,
+                                    renderTarget: cgContext,
                                     transform2d: transform,
                                     transform3d: renderTransform)
 
@@ -112,7 +112,7 @@ class Canvas<StateType: ObservableObject>: NSView {
               */
         }
 
-        //draw frame
+        // draw frame
         cgContext.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
         cgContext.beginPath()
         cgContext.move(to: CGPoint(x: 0, y: 0))
@@ -121,7 +121,6 @@ class Canvas<StateType: ObservableObject>: NSView {
         cgContext.addLine(to: CGPoint(x: 0, y: frame.size.height))
         cgContext.closePath()
         cgContext.strokePath()
-
     }
 
     func drawText(context: CGContext, text: String, position: CGPoint) {

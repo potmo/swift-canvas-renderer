@@ -13,13 +13,13 @@ public struct LineSection: DrawableShape, PartOfPath {
     }
 
     public func drawPartOfPath(in context: RenderContext) {
-        context.cgContext.move(to: context.transform(from))
-        context.cgContext.addLine(to: context.transform(to))
+        context.renderTarget.move(to: context.transform(from))
+        context.renderTarget.addLine(to: context.transform(to))
     }
 
     public func draw(in context: RenderContext) {
-        context.cgContext.beginPath()
+        context.renderTarget.beginPath()
         drawPartOfPath(in: context)
-        context.cgContext.strokePath()
+        context.renderTarget.strokePath()
     }
 }

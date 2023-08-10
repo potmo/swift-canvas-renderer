@@ -26,13 +26,13 @@ public struct Path: DrawableShape {
     }
 
     public func draw(in context: RenderContext) {
-        context.cgContext.beginPath()
+        context.renderTarget.beginPath()
         for part in parts {
             part.drawPartOfPath(in: context)
         }
         if closed {
-            context.cgContext.closePath()
+            context.renderTarget.closePath()
         }
-        context.cgContext.strokePath()
+        context.renderTarget.strokePath()
     }
 }

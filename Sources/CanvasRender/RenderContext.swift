@@ -12,7 +12,7 @@ public struct RenderContext {
     let transform3d: RenderTransformer
     let canvasSize: Vector2D
 
-    init(canvasSize: Vector2D, renderTarget: RenderTarget, color: Color, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
+    public init(canvasSize: Vector2D, renderTarget: RenderTarget, color: Color, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
         self.canvasSize = canvasSize
         self.renderTarget = renderTarget
         self.color = color
@@ -22,7 +22,7 @@ public struct RenderContext {
         self.transform3d = transform3d
     }
 
-    init(canvasSize: Vector2D, renderTarget: RenderTarget, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
+    public init(canvasSize: Vector2D, renderTarget: RenderTarget, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
         self.canvasSize = canvasSize
         self.renderTarget = renderTarget
         self.color = .black
@@ -82,7 +82,7 @@ public struct OrthographicTransform: RenderTransformer {
         let modelViewMatrix = viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
         let worldPosition = translationMatrix(pos: point)
         let clipSpace = projectionMatrix * modelViewMatrix * worldPosition
-        let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize * 0.5
+        let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize
 
         return screenSpace
     }

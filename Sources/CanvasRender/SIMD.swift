@@ -56,9 +56,11 @@ public extension Vector {
     func rotated(by quat: Quat) -> Vector {
         return quat.act(self)
     }
-}
 
-public extension Vector {
+    func rotated(by quat: Quat, pivot: Vector) -> Vector {
+        return quat.act(self - pivot) + pivot
+    }
+
     func rotated(by angle: Double, around axis: Axis) -> Vector {
         let quat = Quat(angle: angle, axis: axis.vector)
         return quat.act(self)
@@ -67,6 +69,12 @@ public extension Vector {
     func rotated(by angle: Double, around axis: Axis, pivot: Vector) -> Vector {
         let quat = Quat(angle: angle, axis: axis.vector)
         return quat.act(self - pivot) + pivot
+    }
+}
+
+public extension Vector {
+    func extended(by amount: Double) -> Vector {
+        self.normalized.scaled(by: self.length + amount)
     }
 }
 

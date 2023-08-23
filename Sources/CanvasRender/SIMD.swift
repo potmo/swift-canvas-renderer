@@ -140,7 +140,12 @@ public extension Vector {
     func projected(onto other: Vector) -> Vector {
         // let otherNormalized = other.normalized
         // return self.dot(otherNormalized) * otherNormalized
+
         return project(self, other)
+    }
+
+    func projected(ontoPlaneWithNormal normal: Vector) -> Vector {
+        return ((1 / pow(normal.length,2)) * normal).cross(self.cross(normal))
     }
 }
 

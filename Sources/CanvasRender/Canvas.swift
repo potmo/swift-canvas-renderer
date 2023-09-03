@@ -85,6 +85,8 @@ class Canvas<StateType: ObservableObject>: NSView {
                                     transform2d: transform,
                                     transform3d: renderTransform)
 
+        cgContext.setLineCap(.round)
+        cgContext.setLineJoin(.round)
         cgContext.setStrokeColor(NSColor(context.color).cgColor)
         cgContext.setLineWidth(context.lineWidth)
 

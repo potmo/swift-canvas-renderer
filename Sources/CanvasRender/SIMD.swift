@@ -144,8 +144,12 @@ public extension Vector {
         return project(self, other)
     }
 
+    func scalarProjection(onto other: Vector) -> Double {
+        return self.dot(other) / other.length
+    }
+
     func projected(ontoPlaneWithNormal normal: Vector) -> Vector {
-        return ((1 / pow(normal.length,2)) * normal).cross(self.cross(normal))
+        return ((1 / pow(normal.length, 2)) * normal).cross(self.cross(normal))
     }
 }
 
@@ -196,6 +200,12 @@ public extension Vector {
         let majorZ = (self.z <= self.x) && (self.z <= self.y) ? 1.0 : 0.0
 
         return self.normalized.cross(Vector(majorX, majorY, majorZ))
+    }
+}
+
+public extension Vector {
+    var isNaN: Bool {
+        return x.isNaN || y.isNaN || z.isNaN
     }
 }
 
@@ -299,5 +309,16 @@ public extension Quat {
     init(pitch: Double, jaw: Double, roll: Double) {
         let matrix = simd_double3x3(pitch: pitch, jaw: jaw, roll: roll)
         self = Quat(matrix)
+    }
+}
+
+public extension Double {
+    func toFixed(_ fractionDigits: Int) -> String {
+        let numberFormatter = NumberFormatter()
+        numberFormatter.maximumFractionDigits = fractionDigits
+        numberFormatter.minimumFractionDigits = fractionDigits
+        numberFormatter.decimalSeparator = "."
+
+        return numberFormatter.string(from: NSNumber(value: self)) ?? "NaN"
     }
 }

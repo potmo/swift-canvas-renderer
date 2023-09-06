@@ -8,12 +8,14 @@ public struct Decoration: DrawableShape {
     let lineStyle: LineStyle?
     let lineWidth: Double?
     let shapes: [DrawableShape]
+    let hidden: Bool?
 
-    public init(color: Color? = nil, lineStyle: LineStyle? = nil, lineWidth: Double? = nil, @CanvasBuilder _ builder: () -> [DrawableShape]) {
+    public init(color: Color? = nil, lineStyle: LineStyle? = nil, lineWidth: Double? = nil, hidden: Bool? = false, @CanvasBuilder _ builder: () -> [DrawableShape]) {
         self.color = color
         self.lineStyle = lineStyle
         self.shapes = builder()
         self.lineWidth = lineWidth
+        self.hidden = hidden
     }
 
     public func draw(in context: RenderContext) {
@@ -57,8 +59,12 @@ public struct Decoration: DrawableShape {
                                        transform2d: context.transform2d,
                                        transform3d: context.transform3d)
 
-        for shape in shapes {
-            shape.draw(in: newContext)
+        // only draw if non hidden
+        let isViewHidden = hidden ?? false
+        if !isViewHidden {
+            for shape in shapes {
+                shape.draw(in: newContext)
+            }
         }
 
         // reset color

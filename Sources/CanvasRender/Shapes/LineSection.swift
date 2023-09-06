@@ -8,6 +8,10 @@ public struct LineSection: DrawableShape, PartOfPath {
     let to: Vector
 
     public init(from: simd_double3, to: simd_double3) {
+        guard !from.isNaN, !to.isNaN else {
+            fatalError("input is not valid")
+        }
+
         self.from = from
         self.to = to
     }

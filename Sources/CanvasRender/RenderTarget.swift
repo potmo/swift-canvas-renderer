@@ -1,4 +1,5 @@
 import CoreGraphics
+import CoreText
 import Foundation
 
 public protocol RenderTarget {
@@ -10,9 +11,36 @@ public protocol RenderTarget {
     func setLineDash(phase: CGFloat, lengths: [CGFloat])
     func setStrokeColor(_ color: CGColor)
     func setLineWidth(_ width: CGFloat)
+    func text(_ string: String, position: CGPoint, size: CGFloat)
 }
 
 extension CGContext: RenderTarget {
+    public func text(_ string: String, position: CGPoint, size: CGFloat) {
+        let context = self
+        context.saveGState()
+
+        let myfont = CTFontCreateWithName("Helvetica" as CFString, size, nil)
+        let attributes = [NSAttributedString.Key.font: myfont]
+        let attributedString = NSAttributedString(string: string, attributes: attributes)
+
+        // Flip
+        // context.translateBy(x: 0, y: self.frame.size.height)
+        // context.scaleBy(x: 1, y: -1)
+        // context.translateBy(x: 100, y: 100)
+
+//        context.concatenate(translateTransform)
+//        context.concatenate(zoomTransform)
+//        context.concatenate(flipVerticalTransform)
+//
+//        let transformedPosition = position
+//            .applying(zoomTransform.inverted())
+//            .applying(translateTransform.inverted())
+//            .applying(flipVerticalTransform.inverted())
+
+        string.draw(at: position, withAttributes: attributes)
+
+        context.restoreGState()
+    }
 }
 
 public class SVGRenderTarget: RenderTarget {
@@ -87,6 +115,10 @@ public class SVGRenderTarget: RenderTarget {
         }
         let strokeWidth = "stroke-width=\"\(currentStrokeWidth)\""
         svgContent += "<path d=\"\(content)\" \(color) \(dash) fill=\"none\" />\n"
+    }
+
+    public func text(_ string: String, position: CGPoint, size: CGFloat) {
+        svgContent += "<text x=\"\(position.x)\", y=\"\(position.y)\" font-size=\"\(size)\">\(string)</text>\n"
     }
 
     public var svg: String {

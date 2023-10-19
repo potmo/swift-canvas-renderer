@@ -38,7 +38,7 @@ public extension Vector {
 
 public extension Vector {
     static func normalFromClockwiseVertices(a: Vector, b: Vector, c: Vector) -> Vector {
-        return simd_cross(c - a, b - a).normalized
+        return simd_cross((c - a).normalized, (b - a).normalized).normalized
     }
 }
 
@@ -309,6 +309,19 @@ public extension Quat {
     init(pitch: Double, jaw: Double, roll: Double) {
         let matrix = simd_double3x3(pitch: pitch, jaw: jaw, roll: roll)
         self = Quat(matrix)
+    }
+
+    init(pointA: Vector, pivot: Vector, pointB: Vector) {
+        let clockwiseNormal = Vector.normalFromClockwiseVertices(a: pointA, b: pointB, c: pivot)
+        let directionA = (pointA - pivot).normalized
+        let directionB = (pointB - pivot).normalized
+        let rotation = Quat(from: directionA, to: directionB)
+        if rotation.axis.dot(clockwiseNormal) < 0 {
+            // flip the axis and rotate the other way
+            self = Quat(angle: 2 * .pi - rotation.angle, axis: -rotation.axis)
+        } else {
+            self = rotation
+        }
     }
 }
 

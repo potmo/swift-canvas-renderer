@@ -118,7 +118,7 @@ public class SVGRenderTarget: RenderTarget {
     }
 
     public func text(_ string: String, position: CGPoint, size: CGFloat) {
-        svgContent += "<text x=\"\(position.x)\", y=\"\(position.y)\" font-size=\"\(size)\">\(string)</text>\n"
+        svgContent += "<text x=\"\(position.x)\" y=\"\(position.y)\" font-size=\"\(size)\">\(string)</text>\n"
     }
 
     public var svg: String {

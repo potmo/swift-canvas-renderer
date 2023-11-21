@@ -55,6 +55,7 @@ class Canvas<StateType: ObservableObject>: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: canvasSize.x, height: canvasSize.y))
         self.wantsRestingTouches = false
         self.allowedTouchTypes = .indirect
+        self.clipsToBounds = true
     }
 
     override init(frame frameRect: NSRect) {

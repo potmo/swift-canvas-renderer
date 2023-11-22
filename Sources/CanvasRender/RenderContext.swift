@@ -5,14 +5,14 @@ import SwiftUI
 
 public struct RenderContext {
     let renderTarget: RenderTarget
-    let color: Color
+    let color: CanvasColor
     let lineWidth: Double
     let lineStyle: Decoration.LineStyle
     let transform2d: CGAffineTransform
     let transform3d: RenderTransformer
     let canvasSize: Vector2D
 
-    public init(canvasSize: Vector2D, renderTarget: RenderTarget, color: Color, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
+    public init(canvasSize: Vector2D, renderTarget: RenderTarget, color: CanvasColor, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
         self.canvasSize = canvasSize
         self.renderTarget = renderTarget
         self.color = color

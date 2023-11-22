@@ -4,13 +4,13 @@ import simd
 import SwiftUI
 
 public struct Decoration: DrawableShape {
-    let color: Color?
+    let color: CanvasColor?
     let lineStyle: LineStyle?
     let lineWidth: Double?
     let shapes: [DrawableShape]
     let hidden: Bool?
 
-    public init(color: Color? = nil, lineStyle: LineStyle? = nil, lineWidth: Double? = nil, hidden: Bool? = false, @CanvasBuilder _ builder: () -> [DrawableShape]) {
+    public init(color: CanvasColor? = nil, lineStyle: LineStyle? = nil, lineWidth: Double? = nil, hidden: Bool? = false, @CanvasBuilder _ builder: () -> [DrawableShape]) {
         self.color = color
         self.lineStyle = lineStyle
         self.shapes = builder()
@@ -35,9 +35,9 @@ public struct Decoration: DrawableShape {
         }
 
         // set color
-        let resetColor: Color?
+        let resetColor: CanvasColor?
         if let color, context.color != color {
-            context.renderTarget.setStrokeColor(NSColor(color).cgColor)
+            context.renderTarget.setStrokeColor(color.cgColor)
             resetColor = context.color
         } else {
             resetColor = nil
@@ -69,7 +69,7 @@ public struct Decoration: DrawableShape {
 
         // reset color
         if let resetColor {
-            context.renderTarget.setStrokeColor(NSColor(resetColor).cgColor)
+            context.renderTarget.setStrokeColor(resetColor.cgColor)
         }
 
         // reset linestyle

@@ -88,7 +88,7 @@ class Canvas<StateType: ObservableObject>: NSView {
 
         cgContext.setLineCap(.round)
         cgContext.setLineJoin(.round)
-        cgContext.setStrokeColor(NSColor(context.color).cgColor)
+        cgContext.setStrokeColor(context.color.cgColor)
         cgContext.setLineWidth(context.lineWidth)
 
         shapes.forEach { $0.draw(in: context) }

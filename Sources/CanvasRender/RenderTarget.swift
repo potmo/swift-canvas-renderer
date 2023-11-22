@@ -43,6 +43,131 @@ extension CGContext: RenderTarget {
     }
 }
 
+public class DXFRenderTarget: RenderTarget {
+    private var currentPath: [CGPoint] = []
+    private var dxfContent = ""
+    private var layer = DXFLayer.cut
+
+    enum DXFLayer: CaseIterable {
+        case cut
+        case etch
+
+        var string: String {
+            switch self {
+            case .cut: "cut"
+            case .etch: "etch"
+            }
+        }
+
+        var color: String {
+            switch self {
+            case .cut: "BLACK"
+            case .etch: "YELLOW"
+            }
+        }
+    }
+
+    public init() {
+    }
+
+    public func addLine(to point: CGPoint) {
+        currentPath.append(point)
+    }
+
+    public func move(to point: CGPoint) {
+        // if this will break the line we need to print it
+        if !currentPath.isEmpty {
+            strokePath()
+        }
+
+        currentPath.append(point)
+    }
+
+    public func beginPath() {
+        currentPath = []
+    }
+
+    public func strokePath() {
+        // points = [(0, 0), (3, 0), (6, 3), (6, 6)]
+        // msp.add_lwpolyline(points)
+
+        let points = currentPath.map { point in
+            let x = Self.numberFormatter.string(from: point.x as! NSNumber)!
+            let y = Self.numberFormatter.string(from: point.y as! NSNumber)!
+            return "(\(x), \(y))"
+        }
+        .joined(separator: ", ")
+
+        dxfContent += "\nmsp.add_lwpolyline([\(points)], dxfattribs={\"layer\": \"\(layer.string)\"})"
+
+        currentPath = []
+    }
+
+    public func closePath() {
+        guard let firstPoint = currentPath.first else {
+            return
+        }
+        currentPath.append(firstPoint)
+    }
+
+    public func setLineDash(phase: CGFloat, lengths: [CGFloat]) {
+        // TODO: Do this
+    }
+
+    public func setStrokeColor(_ color: CGColor) {
+        if color == CanvasColor.yellow.cgColor {
+            layer = .etch
+        } else {
+            layer = .cut
+        }
+    }
+
+    public func setLineWidth(_ width: CGFloat) {
+        // TODO: Do this
+    }
+
+    public func text(_ string: String, position: CGPoint, size: CGFloat) {
+    }
+
+    public var dxf: String {
+        return """
+        import ezdxf
+        from ezdxf.addons.drawing import Frontend, RenderContext, pymupdf, layout, config
+        from sys import stdout, stderr
+        doc = ezdxf.new("R2000")
+        msp = doc.modelspace()
+        \(DXFLayer.allCases.flatMap { ["shapeLayer = doc.layers.add(\"\($0.string)\")", "shapeLayer.color = ezdxf.colors.\($0.color)"] }.joined(separator: "\n"))
+        \(dxfContent)
+        doc.saveas("test-generated.dxf")
+
+
+        context = RenderContext(doc)
+        backend = pymupdf.PyMuPdfBackend()
+        cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE)
+        frontend = Frontend(context, backend, config=cfg)
+        frontend.draw_layout(msp)
+        page = layout.Page(210, 297, layout.Units.mm, margins=layout.Margins.all(20))
+        pdf_bytes = backend.get_pdf_bytes(page)
+        with open("test-generated.pdf", "wb") as fp:
+            fp.write(pdf_bytes)
+
+        #doc.write(stdout) # this prints it all to stdout
+        """
+    }
+
+    static var numberFormatter: NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.decimalSeparator = "."
+        formatter.alwaysShowsDecimalSeparator = true
+        formatter.hasThousandSeparators = false
+        formatter.maximumFractionDigits = 8
+        formatter.minimumFractionDigits = 1
+        return formatter
+    }
+}
+
 public class SVGRenderTarget: RenderTarget {
     private var currentPath: [SVGCommand]?
     private var svgContent = ""

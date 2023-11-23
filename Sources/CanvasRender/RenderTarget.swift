@@ -46,16 +46,32 @@ extension CGContext: RenderTarget {
 public class DXFRenderTarget: RenderTarget {
     private var currentPath: [CGPoint] = []
     private var dxfContent = ""
-    private var layer = DXFLayer.cut
+
+    private var color = CanvasColor.black
+    private var dash = false
+
+    private var layer: DXFLayer {
+        if dash {
+            return .dash
+        }
+
+        if color == .yellow {
+            return .etch
+        }
+
+        return .cut
+    }
 
     enum DXFLayer: CaseIterable {
         case cut
         case etch
+        case dash
 
         var string: String {
             switch self {
             case .cut: "cut"
             case .etch: "etch"
+            case .dash: "dash"
             }
         }
 
@@ -63,6 +79,15 @@ public class DXFRenderTarget: RenderTarget {
             switch self {
             case .cut: "BLACK"
             case .etch: "YELLOW"
+            case .dash: "RED"
+            }
+        }
+
+        var linetype: String {
+            switch self {
+            case .cut: "CONTINUOUS"
+            case .etch: "CONTINUOUS"
+            case .dash: "DASHED"
             }
         }
     }
@@ -98,7 +123,7 @@ public class DXFRenderTarget: RenderTarget {
         }
         .joined(separator: ", ")
 
-        dxfContent += "\nmsp.add_lwpolyline([\(points)], dxfattribs={\"layer\": \"\(layer.string)\"})"
+        dxfContent += "\nmsp.add_lwpolyline([\(points)], dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})"
 
         currentPath = []
     }
@@ -111,14 +136,16 @@ public class DXFRenderTarget: RenderTarget {
     }
 
     public func setLineDash(phase: CGFloat, lengths: [CGFloat]) {
-        // TODO: Do this
+        // we don't define the dash here we just set it as the dash layer or not
+        self.dash = !lengths.isEmpty
     }
 
     public func setStrokeColor(_ color: CGColor) {
+        // we only define the yellow layer otherwise it is black
         if color == CanvasColor.yellow.cgColor {
-            layer = .etch
+            self.color = .yellow
         } else {
-            layer = .cut
+            self.color = .black
         }
     }
 
@@ -134,10 +161,23 @@ public class DXFRenderTarget: RenderTarget {
         import ezdxf
         from ezdxf.addons.drawing import Frontend, RenderContext, pymupdf, layout, config
         from sys import stdout, stderr
-        doc = ezdxf.new("R2000")
+        from ezdxf import units
+
+        doc = ezdxf.new("AC1027", setup=True) # Autocad R2013
+        doc.units = units.MM
         msp = doc.modelspace()
-        \(DXFLayer.allCases.flatMap { ["shapeLayer = doc.layers.add(\"\($0.string)\")", "shapeLayer.color = ezdxf.colors.\($0.color)"] }.joined(separator: "\n"))
+        \(DXFLayer.allCases.flatMap {
+            [
+                "shapeLayer = doc.layers.add(\"\($0.string)\")",
+                "shapeLayer.color = ezdxf.colors.\($0.color)",
+                "shapeLayer.linetype = \"\($0.linetype)\"",
+            ]
+        }.joined(separator: "\n"))
         \(dxfContent)
+
+
+        doc.validate()
+
         doc.saveas("test-generated.dxf")
 
 
@@ -152,6 +192,7 @@ public class DXFRenderTarget: RenderTarget {
             fp.write(pdf_bytes)
 
         #doc.write(stdout) # this prints it all to stdout
+
         """
     }
 

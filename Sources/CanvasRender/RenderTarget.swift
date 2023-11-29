@@ -28,22 +28,6 @@ extension CGContext: RenderTarget {
                                y: center.y + sin(startAngle) * radius)
 
         self.move(to: startPos)
-        /*
-         self.move(to: CGPoint(x: startPos.x - 3, y: startPos.y))
-         self.addLine(to: CGPoint(x: startPos.x + 3, y: startPos.y))
-         self.move(to: CGPoint(x: startPos.x, y: startPos.y - 3))
-         self.addLine(to: CGPoint(x: startPos.x, y: startPos.y + 3))
-
-         self.move(to: startPos)
-
-         self.addArc(center: startPos,
-                     radius: 4,
-                     startAngle: 0,
-                     endAngle: .pi * 2,
-                     clockwise: false)
-
-         self.move(to: startPos)
-          */
 
         self.addArc(center: center,
                     radius: radius,
@@ -152,11 +136,29 @@ public class DXFRenderTarget: RenderTarget {
 
         let formattedCenter = center.formatted
 
+        let point1 = CGPoint(x: center.x + cos(startAngle) * radius,
+                             y: center.y + sin(startAngle) * radius).formatted
+
+        let point2 = CGPoint(x: center.x + cos(endAngle) * radius,
+                             y: center.y + sin(endAngle) * radius).formatted
+
+        if point1 == point2 {
+            return
+        }
+
+
+
+//        arc = ConstructionArc.from_3p(
+//            start_point=(\(point1.x), \(point1.y)), end_point=(\(point2.x), \(point2.y)), def_point=(\(center.x), \(center.y))
+//        )
+
+        let formattedStartAngle = CGFloat(Double(startAngle).radiansToDegrees).formatted
+        let formattedEndAngle = CGFloat(Double(endAngle).radiansToDegrees).formatted
+
         dxfContent += """
-        arc = ConstructionArc.from_3p(
-            start_point=(10, 0), end_point=(0, 0), def_point=(5, 3)
-        )
-        arc.add_to_layout(msp, dxfattribs=attribs)
+
+        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle))
+        arc.add_to_layout(msp, dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})
         """
     }
 
@@ -211,6 +213,7 @@ public class DXFRenderTarget: RenderTarget {
         return """
         import ezdxf
         from ezdxf.addons.drawing import Frontend, RenderContext, pymupdf, layout, config
+        from ezdxf.math import ConstructionArc
         from sys import stdout, stderr
         from ezdxf import units
 

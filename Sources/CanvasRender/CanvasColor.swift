@@ -5,7 +5,7 @@ import SwiftUI
 public struct CanvasColor: Equatable {
     public static let black = CanvasColor(0, 0, 0, 1)
     public static let white = CanvasColor(1, 1, 1, 1)
-    public static let yellow = CanvasColor(1, 1, 0, 1)
+    public static let yellow = CanvasColor(1, 0.8, 0, 1)
     public static let cyan = CanvasColor(0, 1, 1, 1)
     public static let red = CanvasColor(1, 0, 0, 1)
     public static let green = CanvasColor(0, 1, 0, 1)
@@ -22,21 +22,21 @@ public struct CanvasColor: Equatable {
     let b: Double
     let a: Double
 
-    init(red r: Double, green g: Double, blue b: Double, alpha a: Double) {
+    public init(red r: Double, green g: Double, blue b: Double, alpha a: Double) {
         self.r = r
         self.g = g
         self.b = b
         self.a = a
     }
 
-    init(_ r: Double, _ g: Double, _ b: Double, _ a: Double) {
+    public init(_ r: Double, _ g: Double, _ b: Double, _ a: Double) {
         self.r = r
         self.g = g
         self.b = b
         self.a = a
     }
 
-    func opacity(_ value: Double) -> CanvasColor {
+    public func opacity(_ value: Double) -> CanvasColor {
         return CanvasColor(red: r, green: g, blue: b, alpha: a * value)
     }
 

@@ -12,9 +12,46 @@ public protocol RenderTarget {
     func setStrokeColor(_ color: CGColor)
     func setLineWidth(_ width: CGFloat)
     func text(_ string: String, position: CGPoint, size: CGFloat)
+    func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat)
 }
 
 extension CGContext: RenderTarget {
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat) {
+        // swap the direction of rotation since the CGtransform has screwed things up it makes the cos/sin angle go counter clockwise
+        // this makes it go clockwise
+        // let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
+        // let fixedEndAngle = startAngle - delta
+
+        // mark start
+
+        let startPos = CGPoint(x: center.x + cos(startAngle) * radius,
+                               y: center.y + sin(startAngle) * radius)
+
+        self.move(to: startPos)
+        /*
+         self.move(to: CGPoint(x: startPos.x - 3, y: startPos.y))
+         self.addLine(to: CGPoint(x: startPos.x + 3, y: startPos.y))
+         self.move(to: CGPoint(x: startPos.x, y: startPos.y - 3))
+         self.addLine(to: CGPoint(x: startPos.x, y: startPos.y + 3))
+
+         self.move(to: startPos)
+
+         self.addArc(center: startPos,
+                     radius: 4,
+                     startAngle: 0,
+                     endAngle: .pi * 2,
+                     clockwise: false)
+
+         self.move(to: startPos)
+          */
+
+        self.addArc(center: center,
+                    radius: radius,
+                    startAngle: startAngle,
+                    endAngle: endAngle,
+                    clockwise: false)
+    }
+
     public func text(_ string: String, position: CGPoint, size: CGFloat) {
         let context = self
         context.saveGState()
@@ -108,6 +145,21 @@ public class DXFRenderTarget: RenderTarget {
         currentPath.append(point)
     }
 
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat) {
+        if !currentPath.isEmpty {
+            strokePath()
+        }
+
+        let formattedCenter = center.formatted
+
+        dxfContent += """
+        arc = ConstructionArc.from_3p(
+            start_point=(10, 0), end_point=(0, 0), def_point=(5, 3)
+        )
+        arc.add_to_layout(msp, dxfattribs=attribs)
+        """
+    }
+
     public func beginPath() {
         currentPath = []
     }
@@ -117,9 +169,8 @@ public class DXFRenderTarget: RenderTarget {
         // msp.add_lwpolyline(points)
 
         let points = currentPath.map { point in
-            let x = Self.numberFormatter.string(from: point.x as! NSNumber)!
-            let y = Self.numberFormatter.string(from: point.y as! NSNumber)!
-            return "(\(x), \(y))"
+            let p = point.formatted
+            return "(\(p.x), \(p.y))"
         }
         .joined(separator: ", ")
 
@@ -195,18 +246,6 @@ public class DXFRenderTarget: RenderTarget {
 
         """
     }
-
-    static var numberFormatter: NumberFormatter {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = false
-        formatter.decimalSeparator = "."
-        formatter.alwaysShowsDecimalSeparator = true
-        formatter.hasThousandSeparators = false
-        formatter.maximumFractionDigits = 8
-        formatter.minimumFractionDigits = 1
-        return formatter
-    }
 }
 
 public class SVGRenderTarget: RenderTarget {
@@ -229,6 +268,10 @@ public class SVGRenderTarget: RenderTarget {
         }
 
         currentPath?.append(.closePath)
+    }
+
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat) {
+        // TODO: Fix this
     }
 
     public func move(to point: CGPoint) {

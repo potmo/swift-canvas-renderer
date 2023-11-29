@@ -43,6 +43,9 @@ public struct RenderContext {
 public protocol RenderTransformer {
     func apply(point: Vector, canvasSize: Vector2D) -> Vector2D
     var cameraDirection: Vector { get }
+
+    /// special case for paper drawing where camera looks down from z+ towards z- with a orthographic rendering
+    var isTopDownOrthographic: Bool { get }
 }
 
 public struct AxisAlignedOrthographicTransform: RenderTransformer {
@@ -53,6 +56,13 @@ public struct AxisAlignedOrthographicTransform: RenderTransformer {
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
         return plane.convert(point)
+    }
+
+    public var isTopDownOrthographic: Bool {
+        switch plane {
+        case .xy: true
+        default: false
+        }
     }
 
     public var cameraDirection: Vector {
@@ -75,6 +85,10 @@ public struct OrthographicTransform: RenderTransformer {
 
     public var cameraDirection: Vector {
         return camera.rotation.act(Vector(0, 1, 0))
+    }
+
+    public var isTopDownOrthographic: Bool {
+        return cameraDirection.dot(Vector(0, -1, 0)) == 1.0
     }
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
@@ -128,6 +142,7 @@ public protocol PerspectiveCamera {
 }
 
 public struct PerspectiveTransform: RenderTransformer {
+    public let isTopDownOrthographic = false
     private let camera: PerspectiveCamera
     public init(camera: PerspectiveCamera) {
         self.camera = camera

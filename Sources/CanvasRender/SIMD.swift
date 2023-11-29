@@ -37,14 +37,29 @@ public extension Vector {
 }
 
 public extension Vector {
-    static func normalFromClockwiseVertices(a: Vector, b: Vector, c: Vector) -> Vector {
-        return simd_cross((c - a).normalized, (b - a).normalized).normalized
+    static func normalFromClockwiseVertices(a: Vector, pivot: Vector, b: Vector) -> Vector {
+        guard a != b else {
+            fatalError("a and b can not be the same")
+        }
+
+        return simd_cross((b - a).normalized, (pivot - a).normalized).normalized
     }
 }
 
 public extension Vector {
-    func angleBetween(and other: Vector, around rotationAxis: Vector = Vector(0, 0, 1)) -> Double {
-        return atan2(self.normalized.cross(other.normalized).dot(rotationAxis), self.normalized.dot(other.normalized))
+    func angleBetween(and other: Vector, around rotationAxis: Vector?) -> Double {
+        if self.normalized == other.normalized {
+            return 0.0
+        }
+
+        let axis: Vector
+        if let rotationAxis {
+            axis = rotationAxis
+        } else {
+            axis = self.cross(other)
+        }
+
+        return atan2(self.normalized.cross(other.normalized).dot(axis), self.normalized.dot(other.normalized))
     }
 
     func angleBetween2(and other: Vector) -> Double {
@@ -75,6 +90,15 @@ public extension Vector {
 public extension Vector {
     func extended(by amount: Double) -> Vector {
         self.normalized.scaled(by: self.length + amount)
+    }
+}
+
+public extension Vector {
+    func toFixed(_ fractionDigits: Int) -> String {
+        let x = self.x.toFixed(fractionDigits)
+        let y = self.y.toFixed(fractionDigits)
+        let z = self.z.toFixed(fractionDigits)
+        return "(\(x), \(y), \(z))"
     }
 }
 
@@ -312,10 +336,17 @@ public extension Quat {
     }
 
     init(pointA: Vector, pivot: Vector, pointB: Vector) {
-        let clockwiseNormal = Vector.normalFromClockwiseVertices(a: pointA, b: pointB, c: pivot)
+        let clockwiseNormal = Vector.normalFromClockwiseVertices(a: pointA, pivot: pointB, b: pivot)
         let directionA = (pointA - pivot).normalized
         let directionB = (pointB - pivot).normalized
-        let rotation = Quat(from: directionA, to: directionB)
+
+        let rotation: Quat
+
+        if directionA == directionB {
+            rotation = Quat(angle: 0, axis: clockwiseNormal)
+        } else {
+            rotation = Quat(from: directionA, to: directionB)
+        }
         if rotation.axis.dot(clockwiseNormal) < 0 {
             // flip the axis and rotate the other way
             self = Quat(angle: 2 * .pi - rotation.angle, axis: -rotation.axis)
@@ -333,5 +364,41 @@ public extension Double {
         numberFormatter.decimalSeparator = "."
 
         return numberFormatter.string(from: NSNumber(value: self)) ?? "NaN"
+    }
+}
+
+extension CGPoint {
+    var formatted: (x: String, y: String) {
+        let x = self.x.formatted
+        let y = self.y.formatted
+        return (x: x, y: y)
+    }
+}
+
+extension CGFloat {
+    private static var numberFormatter: NumberFormatter {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.decimalSeparator = "."
+        formatter.alwaysShowsDecimalSeparator = true
+        formatter.hasThousandSeparators = false
+        formatter.maximumFractionDigits = 8
+        formatter.minimumFractionDigits = 1
+        return formatter
+    }
+
+    var formatted: String {
+        return Self.numberFormatter.string(from: self as! NSNumber)!
+    }
+}
+
+extension Double {
+    func wrapMax(_ max: Double) -> Double {
+        return fmod(max + fmod(self, max), max)
+    }
+
+    func wrap(around range: ClosedRange<Double>) -> Double {
+        return range.lowerBound + (self - range.lowerBound).wrapMax(range.upperBound - range.lowerBound)
     }
 }

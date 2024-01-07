@@ -13,6 +13,8 @@ public protocol RenderTarget {
     func setLineWidth(_ width: CGFloat)
     func text(_ string: String, position: CGPoint, size: CGFloat)
     func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat)
+    func addComment(_ string: String)
+    func circle(center: CGPoint, radius: CGFloat)
 }
 
 extension CGContext: RenderTarget {
@@ -34,6 +36,18 @@ extension CGContext: RenderTarget {
                     startAngle: startAngle,
                     endAngle: endAngle,
                     clockwise: false)
+    }
+
+    public func circle(center: CGPoint, radius: CGFloat) {
+        let startPos = CGPoint(x: center.x + radius,
+                               y: center.y)
+
+        self.addEllipse(in: CGRect(x: center.x - radius,
+                                   y: center.y - radius,
+                                   width: radius * 2,
+                                   height: radius * 2))
+
+        self.move(to: startPos)
     }
 
     public func text(_ string: String, position: CGPoint, size: CGFloat) {
@@ -61,6 +75,9 @@ extension CGContext: RenderTarget {
         string.draw(at: position, withAttributes: attributes)
 
         context.restoreGState()
+    }
+
+    public func addComment(_ string: String) {
     }
 }
 
@@ -146,8 +163,6 @@ public class DXFRenderTarget: RenderTarget {
             return
         }
 
-
-
 //        arc = ConstructionArc.from_3p(
 //            start_point=(\(point1.x), \(point1.y)), end_point=(\(point2.x), \(point2.y)), def_point=(\(center.x), \(center.y))
 //        )
@@ -160,6 +175,17 @@ public class DXFRenderTarget: RenderTarget {
         arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle))
         arc.add_to_layout(msp, dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})
         """
+    }
+
+    public func circle(center: CGPoint, radius: CGFloat) {
+        dxfContent += """
+
+        msp.add_circle(center=(\(center.x), \(center.y)), radius=\(radius.formatted), dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})
+        """
+    }
+
+    public func addComment(_ string: String) {
+        dxfContent += "\n#\(string)"
     }
 
     public func beginPath() {
@@ -277,6 +303,10 @@ public class SVGRenderTarget: RenderTarget {
         // TODO: Fix this
     }
 
+    public func circle(center: CGPoint, radius: CGFloat) {
+        // TODO: fix this
+    }
+
     public func move(to point: CGPoint) {
         currentPath?.append(.move(x: point.x, y: -point.y))
     }
@@ -331,6 +361,10 @@ public class SVGRenderTarget: RenderTarget {
 
     public func text(_ string: String, position: CGPoint, size: CGFloat) {
         svgContent += "<text x=\"\(position.x)\" y=\"\(position.y)\" font-size=\"\(size)\">\(string)</text>\n"
+    }
+
+    public func addComment(_ string: String) {
+        svgContent += "\n//\(string)"
     }
 
     public var svg: String {

@@ -68,10 +68,16 @@ public struct AxisOrbit: DrawableShape, PartOfPath {
         let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
         context.renderTarget.move(to: transformedStartPoint)
 
-        context.renderTarget.arc(center: transformedPivot,
-                                 radius: transformedRadius,
-                                 startAngle: fixedStartAngle,
-                                 endAngle: fixedEndAngle)
+        if angle == .pi * 2 {
+            context.renderTarget.circle(center: transformedPivot,
+                                        radius: transformedRadius)
+        } else {
+            context.renderTarget.arc(center: transformedPivot,
+                                     radius: transformedRadius,
+                                     startAngle: fixedStartAngle,
+                                     endAngle: fixedEndAngle)
+        }
+
         context.renderTarget.move(to: transformedEndPoint)
     }
 

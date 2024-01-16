@@ -3,7 +3,7 @@ import Foundation
 import simd
 import SwiftUI
 
-public struct Orbit: DrawableShape, PartOfPath {
+public struct OrbitCounterClockwise: DrawableShape, PartOfPath {
     let pivot: simd_double3
     let point: simd_double3
     let rotation: simd_quatd
@@ -81,10 +81,10 @@ public struct Orbit: DrawableShape, PartOfPath {
         }
 
         // use axis orbit for this
-        AxisOrbit(pivot: pivot,
-                  point: point,
-                  angle: abs(shortestAngle),
-                  axis: axis).drawPartOfPath(in: context)
+        AxisOrbitCounterClockwise(pivot: pivot,
+                                  point: point,
+                                  angle: abs(shortestAngle),
+                                  axis: axis).drawPartOfPath(in: context)
     }
 
     private func drawWithPoints(in context: RenderContext) {

@@ -3,7 +3,7 @@ import Foundation
 import simd
 import SwiftUI
 
-public struct AxisOrbit: DrawableShape, PartOfPath {
+public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
     let pivot: simd_double3
     let point: simd_double3
     let angle: Double
@@ -54,10 +54,12 @@ public struct AxisOrbit: DrawableShape, PartOfPath {
         // if the rotation axis is upside down then we have to flip things
         let fixedEndAngle: Double
         let fixedStartAngle: Double
+
         if axis.dot(Vector(0, 0, 1)) < 0 {
             let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
             fixedEndAngle = startAngle
             fixedStartAngle = startAngle - delta
+
         } else {
             fixedEndAngle = endAngle
             fixedStartAngle = startAngle
@@ -68,6 +70,8 @@ public struct AxisOrbit: DrawableShape, PartOfPath {
         let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
         context.renderTarget.move(to: transformedStartPoint)
 
+        let clockwise = false
+
         if angle == .pi * 2 {
             context.renderTarget.circle(center: transformedPivot,
                                         radius: transformedRadius)
@@ -75,7 +79,8 @@ public struct AxisOrbit: DrawableShape, PartOfPath {
             context.renderTarget.arc(center: transformedPivot,
                                      radius: transformedRadius,
                                      startAngle: fixedStartAngle,
-                                     endAngle: fixedEndAngle)
+                                     endAngle: fixedEndAngle,
+                                     clockwise: clockwise)
         }
 
         context.renderTarget.move(to: transformedEndPoint)
@@ -87,8 +92,11 @@ public struct AxisOrbit: DrawableShape, PartOfPath {
 
         let arcLength = angle * radius
 
+        let clockwise = false
+
         for t in stride(from: 0.0, through: arcLength, by: arcResolutuon) {
             let interpolatedAngle: Double
+
             if arcLength == 0 {
                 interpolatedAngle = 0
             } else {

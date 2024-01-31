@@ -23,7 +23,7 @@ public struct Circle: DrawableShape {
         //                                             y: transformedCenter.y + sin(angle) * radius))
         // }
         // context.renderTarget.addArc(center: transformedCenter, radius: radius, startAngle: 0, endAngle: .pi * 2, clockwise: true)
-        context.renderTarget.arc(center: transformedCenter, radius: radius, startAngle: 0, endAngle: .pi * 2, clockwise: false)
+        context.renderTarget.arc(center: transformedCenter, radius: radius, startAngle: 0, endAngle: .pi * 2, counterClockwise: true)
         context.renderTarget.closePath()
         context.renderTarget.strokePath()
     }

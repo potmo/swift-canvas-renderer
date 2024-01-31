@@ -12,13 +12,13 @@ public protocol RenderTarget {
     func setStrokeColor(_ color: CGColor)
     func setLineWidth(_ width: CGFloat)
     func text(_ string: String, position: CGPoint, size: CGFloat)
-    func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, clockwise: Bool)
+    func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool)
     func addComment(_ string: String)
     func circle(center: CGPoint, radius: CGFloat)
 }
 
 extension CGContext: RenderTarget {
-    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, clockwise: Bool = false) {
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool = true) {
         // swap the direction of rotation since the CGtransform has screwed things up it makes the cos/sin angle go counter clockwise
         // this makes it go clockwise
         // let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
@@ -35,7 +35,7 @@ extension CGContext: RenderTarget {
                     radius: radius,
                     startAngle: startAngle,
                     endAngle: endAngle,
-                    clockwise: clockwise)
+                    clockwise: !counterClockwise)
     }
 
     public func circle(center: CGPoint, radius: CGFloat) {
@@ -146,7 +146,7 @@ public class DXFRenderTarget: RenderTarget {
         currentPath.append(point)
     }
 
-    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, clockwise: Bool = false) {
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool = true) {
         if !currentPath.isEmpty {
             strokePath()
         }
@@ -172,7 +172,7 @@ public class DXFRenderTarget: RenderTarget {
 
         dxfContent += """
 
-        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle), is_counter_clockwise=\(!clockwise)
+        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle), is_counter_clockwise=\(counterClockwise ? "True": "False")
         arc.add_to_layout(msp, dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})
         """
     }
@@ -299,7 +299,7 @@ public class SVGRenderTarget: RenderTarget {
         currentPath?.append(.closePath)
     }
 
-    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, clockwise: Bool = false) {
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool = true) {
         // https://www.nan.fyi/svg-paths/arcs
         // TODO: Fix this
     }

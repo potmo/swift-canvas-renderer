@@ -3,7 +3,7 @@ import Foundation
 import simd
 import SwiftUI
 
-public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
+public struct Arc: DrawableShape, PartOfPath {
     let pivot: simd_double3
     let point: simd_double3
     let angle: Double
@@ -55,22 +55,23 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         let fixedEndAngle: Double
         let fixedStartAngle: Double
 
+        let clockwise: Bool
+
         if axis.dot(Vector(0, 0, 1)) < 0 {
             let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
-            fixedEndAngle = startAngle
             fixedStartAngle = startAngle - delta
-
+            fixedEndAngle = startAngle
+            clockwise = angle >= 0
         } else {
-            fixedEndAngle = endAngle
             fixedStartAngle = startAngle
+            fixedEndAngle = endAngle
+            clockwise = angle <= 0
         }
 
         // make sure the we draw a line to the start position first and end up at the end position
         let transformedStartPoint = context.transform(point)
         let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
         context.renderTarget.move(to: transformedStartPoint)
-
-
 
         if angle == .pi * 2 {
             context.renderTarget.circle(center: transformedPivot,
@@ -80,7 +81,7 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
                                      radius: transformedRadius,
                                      startAngle: fixedStartAngle,
                                      endAngle: fixedEndAngle,
-                                     counterClockwise: true)
+                                     counterClockwise: !clockwise)
         }
 
         context.renderTarget.move(to: transformedEndPoint)
@@ -90,9 +91,7 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         let lever = (point - pivot).normalized.scaled(by: radius)
         context.renderTarget.move(to: context.transform(point))
 
-        let arcLength = angle * radius
-
-        let clockwise = false
+        let arcLength = abs(angle) * radius
 
         for t in stride(from: 0.0, through: arcLength, by: arcResolutuon) {
             let interpolatedAngle: Double

@@ -5,7 +5,7 @@ import PackageDescription
 
 let package = Package(name: "swift-canvas-renderer",
                       platforms: [
-                          .macOS(.v13),
+                          .macOS(.v14)
                       ],
                       products: [
                         .library(name: "CanvasRender", type: nil, targets: ["CanvasRender"]),

@@ -55,7 +55,7 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         let fixedEndAngle: Double
         let fixedStartAngle: Double
 
-        if axis.dot(Vector(0, 0, 1)) < 0 {
+        if axis.dot(Vector(0, 0, 1)) < 0 || angle < 0 {
             let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
             fixedEndAngle = startAngle
             fixedStartAngle = startAngle - delta
@@ -68,11 +68,10 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         // make sure the we draw a line to the start position first and end up at the end position
         let transformedStartPoint = context.transform(point)
         let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
+
         context.renderTarget.move(to: transformedStartPoint)
 
-
-
-        if angle == .pi * 2 {
+        if abs(angle) == .pi * 2 {
             context.renderTarget.circle(center: transformedPivot,
                                         radius: transformedRadius)
         } else {
@@ -90,7 +89,7 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         let lever = (point - pivot).normalized.scaled(by: radius)
         context.renderTarget.move(to: context.transform(point))
 
-        let arcLength = angle * radius
+        let arcLength = abs(angle) * radius
 
         let clockwise = false
 

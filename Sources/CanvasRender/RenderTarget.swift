@@ -172,7 +172,7 @@ public class DXFRenderTarget: RenderTarget {
 
         dxfContent += """
 
-        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle), is_counter_clockwise=\(counterClockwise ? "True": "False")
+        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle), is_counter_clockwise=\(counterClockwise ? "True": "False"))
         arc.add_to_layout(msp, dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})
         """
     }

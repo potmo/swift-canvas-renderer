@@ -24,11 +24,11 @@ class RealtimeCanvas: NSView {
     }
 
     private var mousePos: CGPoint? = nil
-    @AppStorage("zoom_1") private var zoom = 1.0
+    @AppStorage("zoom_6") private var zoom = 1.0
 
     // workaround to make AppStorage store the translation (it cannot store complex types)
-    @AppStorage("translationX_1") private var translationX: Double = 0
-    @AppStorage("translationY_1") private var translationY: Double = 0
+    @AppStorage("translationX_6") private var translationX: Double = 0
+    @AppStorage("translationY_6") private var translationY: Double = 0
     private var translation: simd_double2 {
         set {
             self.translationX = newValue.x
@@ -286,8 +286,6 @@ class RealtimeCanvas: NSView {
 
         self.initialTouch = currentTouch
 
-        // self.translateTransform = translateTransform.translatedBy(x: -delta.x * 2, y: delta.y * 2)
-
         setNeedsDisplay(self.bounds)
     }
 
@@ -308,6 +306,26 @@ class RealtimeCanvas: NSView {
         //        print("mouse up \(local.x) \(local.y)")
     }
 
+    override func scrollWheel(with event: NSEvent) {
+        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let localInUnZoomedSpace = local.applying(zoomTransform.concatenating(translateTransform).inverted())
+
+        let zoomFactor = 1 / (1 - event.scrollingDeltaY)
+
+        let newTransform = CGAffineTransform(scaleX: zoom, y: zoom)
+            .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
+            .scaledBy(x: zoomFactor, y: zoomFactor)
+            .translatedBy(x: -localInUnZoomedSpace.x, y: -localInUnZoomedSpace.y)
+
+        // put the transform part in the translation
+        translation += [newTransform.tx, newTransform.ty]
+
+        // put the scale part in zoom
+        zoom = sqrt(Double(newTransform.a * newTransform.a + newTransform.c * newTransform.c))
+
+        setNeedsDisplay(self.bounds)
+    }
+
     override func magnify(with event: NSEvent) {
         let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
         let localInUnZoomedSpace = local.applying(zoomTransform.concatenating(translateTransform).inverted())
@@ -315,13 +333,6 @@ class RealtimeCanvas: NSView {
         let zoomFactor = 1 / (1 - event.magnification)
 
         self.zoom = zoom * zoomFactor
-
-        /*
-         let zoomTransform = zoomTransform
-         .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
-         .scaledBy(x: zoomFactor, y: zoomFactor)
-         .translatedBy(x: -localInUnZoomedSpace.x, y: -localInUnZoomedSpace.y)
-         */
 
         let newTransform = CGAffineTransform(scaleX: zoom, y: zoom)
             .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
@@ -338,15 +349,14 @@ class RealtimeCanvas: NSView {
     }
 
     override func rightMouseDragged(with event: NSEvent) {
-        //
-        //        translate.x += event.deltaX
-        //        translate.y += event.deltaY
-        //
-        //        self.translateTransform = CGAffineTransform(translationX: translate.x, y: translate.y)
-        //
-        //        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
-        //        mousePos = local
-        //
-        //        setNeedsDisplay(self.bounds)
+        let delta = CGPoint(x: event.deltaX, y: event.deltaY)
+
+        if origoInUpperLeft {
+            translation += [-delta.x, delta.y] * 2
+        } else {
+            translation += [-delta.x, -delta.y] * 2
+        }
+
+        setNeedsDisplay(self.bounds)
     }
 }

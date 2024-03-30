@@ -24,11 +24,11 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     private var mousePos: CGPoint? = nil
-    @AppStorage("zoom_1") private var zoom = 1.0
+    @AppStorage("zoom_5") private var zoom = 1.0
 
     // workaround to make AppStorage store the translation (it cannot store complex types)
-    @AppStorage("translationX_1") private var translationX: Double = 0
-    @AppStorage("translationY_1") private var translationY: Double = 0
+    @AppStorage("translationX_5") private var translationX: Double = 0
+    @AppStorage("translationY_5") private var translationY: Double = 0
     private var translation: simd_double2 {
         set {
             self.translationX = newValue.x
@@ -105,14 +105,8 @@ class Canvas<StateType: ObservableObject>: NSView {
             cgContext.addArc(center: mousePos, radius: 5, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: true)
             cgContext.strokePath()
 
-            /*
-              // draw mouse in input space
-              let mappedMouse = mousePos.applying(transform.inverted())
-             context.beginPath()
-             context.setStrokeColor(CGColor(red: 0, green: 255, blue: 0, alpha: 1))
-             context.addArc(center: mappedMouse, radius: 3, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: true)
-             context.strokePath()
-              */
+           // renderTransform.apply(point: <#T##Vector#>, canvasSize: <#T##Vector2D#>)
+
         }
 
         // draw frame
@@ -285,26 +279,18 @@ class Canvas<StateType: ObservableObject>: NSView {
 
         self.initialTouch = currentTouch
 
-        // self.translateTransform = translateTransform.translatedBy(x: -delta.x * 2, y: delta.y * 2)
-
         setNeedsDisplay(self.bounds)
     }
 
     override func mouseDown(with event: NSEvent) {
         let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
         self.mousePos = local
-
-        // if let mousePos = mousePos {
-        // let transform = zoomTransform.concatenating(translateTransform)
-        // let mappedMouse = mousePos.applying(transform.inverted())
-        // }
-
         setNeedsDisplay(self.bounds)
     }
 
     override func mouseUp(with event: NSEvent) {
-        //        let local = self.convert(event.locationInWindow, to: self)
-        //        print("mouse up \(local.x) \(local.y)")
+        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        self.mousePos = local
     }
 
     override func magnify(with event: NSEvent) {
@@ -314,13 +300,6 @@ class Canvas<StateType: ObservableObject>: NSView {
         let zoomFactor = 1 / (1 - event.magnification)
 
         self.zoom = zoom * zoomFactor
-
-        /*
-         let zoomTransform = zoomTransform
-             .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
-             .scaledBy(x: zoomFactor, y: zoomFactor)
-             .translatedBy(x: -localInUnZoomedSpace.x, y: -localInUnZoomedSpace.y)
-          */
 
         let newTransform = CGAffineTransform(scaleX: zoom, y: zoom)
             .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
@@ -337,15 +316,64 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     override func rightMouseDragged(with event: NSEvent) {
-        //
-        //        translate.x += event.deltaX
-        //        translate.y += event.deltaY
-        //
-        //        self.translateTransform = CGAffineTransform(translationX: translate.x, y: translate.y)
-        //
-        //        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
-        //        mousePos = local
-        //
-        //        setNeedsDisplay(self.bounds)
+        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        self.mousePos = local
+
+        let delta = CGPoint(x: event.deltaX, y: event.deltaY)
+
+        if origoInUpperLeft {
+            translation += [-delta.x, delta.y]
+        } else {
+            translation += [delta.x, -delta.y]
+        }
+
+        setNeedsDisplay(self.bounds)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        self.mousePos = local
+
+        let delta = CGPoint(x: event.deltaX, y: event.deltaY)
+
+        if origoInUpperLeft {
+            translation += [-delta.x, delta.y]
+        } else {
+            translation += [delta.x, -delta.y]
+        }
+
+        setNeedsDisplay(self.bounds)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard let mousePos else {
+            return
+        }
+
+        // dont scroll with mouse pad, only mouse
+        guard !event.hasPreciseScrollingDeltas else {
+            return
+        }
+
+        let local = self.convert(mousePos, to: self).applying(flipVerticalTransform)
+        let localInUnZoomedSpace = local.applying(zoomTransform.concatenating(translateTransform).inverted())
+
+        let scrollValue = min(2.0, max(-2.0, event.scrollingDeltaY)) * 0.1
+        let zoomFactor = 1 / (1 - scrollValue)
+
+        self.zoom = zoom * zoomFactor
+
+        let newTransform = CGAffineTransform(scaleX: zoom, y: zoom)
+            .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
+            .scaledBy(x: zoomFactor, y: zoomFactor)
+            .translatedBy(x: -localInUnZoomedSpace.x, y: -localInUnZoomedSpace.y)
+
+        // put the transform part in the translation
+        translation += [newTransform.tx, newTransform.ty]
+
+        // put the scale part in zoom
+        zoom = sqrt(Double(newTransform.a * newTransform.a + newTransform.c * newTransform.c))
+
+        setNeedsDisplay(self.bounds)
     }
 }

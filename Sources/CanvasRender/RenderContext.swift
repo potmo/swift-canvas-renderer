@@ -98,8 +98,8 @@ public struct OrthographicTransform: RenderTransformer {
         let clipSpace = projectionMatrix * modelViewMatrix * worldPosition
         let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize
 
-        // TODO: homogenous coordinates to cartesian?
-        let cartesian = Vector2D(-clipSpace.columns.3.x / clipSpace.columns.3.w, -clipSpace.columns.3.y / clipSpace.columns.3.w) * canvasSize
+        // homogenous coordinates to cartesian
+        let cartesian = Vector2D(clipSpace.columns.3.x / clipSpace.columns.3.w, clipSpace.columns.3.y / clipSpace.columns.3.w) * canvasSize
 
         return cartesian
     }

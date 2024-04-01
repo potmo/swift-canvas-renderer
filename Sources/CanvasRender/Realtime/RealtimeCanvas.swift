@@ -24,11 +24,11 @@ class RealtimeCanvas: NSView {
     }
 
     private var mousePos: CGPoint? = nil
-    @AppStorage("zoom_6") private var zoom = 1.0
+    @AppStorage("zoom_9") private var zoom = 1.0
 
     // workaround to make AppStorage store the translation (it cannot store complex types)
-    @AppStorage("translationX_6") private var translationX: Double = 0
-    @AppStorage("translationY_6") private var translationY: Double = 0
+    @AppStorage("translationX_9") private var translationX: Double = 0
+    @AppStorage("translationY_9") private var translationY: Double = 0
     private var translation: simd_double2 {
         set {
             self.translationX = newValue.x
@@ -307,6 +307,11 @@ class RealtimeCanvas: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
+        // dont scroll with mouse pad, only mouse
+        guard !event.hasPreciseScrollingDeltas else {
+            return
+        }
+
         let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
         let localInUnZoomedSpace = local.applying(zoomTransform.concatenating(translateTransform).inverted())
 

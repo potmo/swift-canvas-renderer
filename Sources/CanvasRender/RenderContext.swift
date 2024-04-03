@@ -42,6 +42,8 @@ public struct RenderContext {
 
 public protocol RenderTransformer {
     func apply(point: Vector, canvasSize: Vector2D) -> Vector2D
+    func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray
+
     var cameraDirection: Vector { get }
 
     /// special case for paper drawing where camera looks down from z+ towards z- with a orthographic rendering
@@ -56,6 +58,10 @@ public struct AxisAlignedOrthographicTransform: RenderTransformer {
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
         return plane.convert(point)
+    }
+
+    public func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
+        fatalError("not implemented")
     }
 
     public var isTopDownOrthographic: Bool {
@@ -92,7 +98,7 @@ public struct OrthographicTransform: RenderTransformer {
     }
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
-        let zoom = 1.0  / 4.0
+        let zoom = 1.0 / 4.0
 
         let modelMatrix = Matrices.translationMatrix(pos: point)
         let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
@@ -107,6 +113,10 @@ public struct OrthographicTransform: RenderTransformer {
 
         let screenSpace = cartesian * canvasSize
         return screenSpace
+    }
+
+    public func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
+        fatalError("not implemented")
     }
 }
 
@@ -138,6 +148,49 @@ public struct PerspectiveTransform: RenderTransformer {
 
         let screenSpace = cartesian * canvasSize
         return screenSpace
+    }
+
+    public func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
+        let projectionMatrix = Matrices.perspectiveProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 1, zFar: 20, fovY: .pi * 0.4)
+        let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
+
+        let matInverse = (projectionMatrix * viewMatrix).inverse
+
+        let halfScreenWidth = canvasSize.x * 0.5
+        let halfScreenHeight = canvasSize.y * 0.5
+
+        let near = SIMD4<Double>(-(point.x - halfScreenWidth) / canvasSize.x,
+                                 -(point.y - halfScreenHeight) / canvasSize.y,
+                                 -0.5,
+                                 1.0)
+        let far = SIMD4<Double>(-(point.x - halfScreenWidth) / canvasSize.x,
+                                -(point.y - halfScreenHeight) / canvasSize.y,
+                                 0.5,
+                                1)
+
+        let nearResult = matInverse * near
+        let farResult = matInverse * far
+
+        let scaledNear = Vector(nearResult.x, nearResult.y, nearResult.z) / nearResult.w
+        let scaledFar = Vector(farResult.x, farResult.y, farResult.z) / farResult.w
+
+        let direction = (scaledFar - scaledNear).normalized
+
+        return Ray(point: scaledNear, direction: direction)
+
+        /*
+         let farPoint = 0.0
+         let v = SIMD4<Double>((point.x / canvasSize.x) * 2 - 1.0,
+                               (point.y / canvasSize.y) * 2 - 1.0,
+                               farPoint,
+                               1.0)
+
+         let pos = v * matInverse
+
+         var result = Vector(-pos.x * pos.w,
+                             -pos.y * pos.w,
+                             pos.z * pos.w)
+         */
     }
 }
 

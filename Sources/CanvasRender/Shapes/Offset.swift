@@ -37,6 +37,11 @@ public struct Offset: DrawableShape {
             return original.apply(point: point + offset, canvasSize: canvasSize)
         }
 
+        func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
+            //FIXME: This needs to be fixedscaledFar
+            return original.unapply(point: point, canvasSize: canvasSize)
+        }
+
         var cameraDirection: Vector {
             return original.cameraDirection
         }

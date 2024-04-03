@@ -3,13 +3,18 @@ import Foundation
 import Observation
 import SwiftUI
 
-public struct ManualCanvasRenderer {
-    let transformer: any RenderTransformer
-    let maker: any ManualShapeMaker
+public class ManualCanvasRenderer {
+    private let transformer: any RenderTransformer
+    private let maker: any ManualShapeMaker
+    private var mousePos = Vector2D()
 
     public init(transformer: any RenderTransformer, maker: any ManualShapeMaker) {
         self.transformer = transformer
         self.maker = maker
+    }
+
+    public func setMousePos(_ pos: Vector2D) {
+        self.mousePos = pos
     }
 
     func render(graphicsContext: inout GraphicsContext, frame: CGSize) {
@@ -31,13 +36,19 @@ public struct ManualCanvasRenderer {
 
         shapes.forEach { $0.draw(in: context) }
 
+        let mousePos = transformer.unapply(point: mousePos, canvasSize: Vector2D(frame.width, frame.height))
+        Decoration(color: .orange) {
+            Arrow(from: mousePos.point, to: mousePos.point + mousePos.direction.scaled(by: 2))
+        }.draw(in: context)
+
         // draw frame
+        let border = 10.0
         renderTarget.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
         renderTarget.beginPath()
-        renderTarget.move(to: CGPoint(x: 0, y: 0))
-        renderTarget.addLine(to: CGPoint(x: frame.width, y: 0))
-        renderTarget.addLine(to: CGPoint(x: frame.width, y: frame.height))
-        renderTarget.addLine(to: CGPoint(x: 0, y: frame.height))
+        renderTarget.move(to: CGPoint(x: border, y: border))
+        renderTarget.addLine(to: CGPoint(x: frame.width - border, y: border))
+        renderTarget.addLine(to: CGPoint(x: frame.width - border, y: frame.height - border))
+        renderTarget.addLine(to: CGPoint(x: border, y: frame.height - border))
         renderTarget.closePath()
         renderTarget.strokePath()
     }
@@ -55,14 +66,13 @@ public struct ShapeCanvas: View {
     }
 
     public var body: some View {
-
         SwiftUI.TimelineView(.animation) { context in
             SwiftUI.Canvas(opaque: true, colorMode: .linear) { graphicsContext, frame in
                 renderer.render(graphicsContext: &graphicsContext, frame: frame)
                 self.currentTime.update(with: context.date)
 
-                //camera.move(to: Vector(currentTime.timeSinceStart, 0, 10))
-                //camera.rotate(to: Quat(angle: .pi * 2 * 0.01 * currentTime.timeSinceStart, axis: Vector(1, 0, 0)))
+                // camera.move(to: Vector(currentTime.timeSinceStart, 0, 10))
+                // camera.rotate(to: Quat(angle: .pi * 2 * 0.01 * currentTime.timeSinceStart, axis: Vector(1, 0, 0)))
             }
         }
     }

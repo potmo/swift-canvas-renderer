@@ -5,6 +5,11 @@ public typealias Vector2D = simd_double2
 public typealias Vector = simd_double3
 public typealias Quat = simd_quatd
 
+public struct Ray {
+    let point: Vector
+    let direction: Vector
+}
+
 public extension Vector {
     func intersectPlane(normal: Vector, planeOrigin: Vector, rayOrigin: Vector) -> Vector? {
         let rayDirection = self

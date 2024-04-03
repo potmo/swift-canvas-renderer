@@ -24,11 +24,12 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     private var mousePos: CGPoint? = nil
-    @AppStorage("zoom_5") private var zoom = 1.0
+    @AppStorage("zoom_6") private var zoom = 1.0
 
     // workaround to make AppStorage store the translation (it cannot store complex types)
-    @AppStorage("translationX_5") private var translationX: Double = 0
-    @AppStorage("translationY_5") private var translationY: Double = 0
+    @AppStorage("translationX_6") private var translationX: Double = 0
+    @AppStorage("translationY_6") private var translationY: Double = 0
+
     private var translation: simd_double2 {
         set {
             self.translationX = newValue.x
@@ -104,9 +105,6 @@ class Canvas<StateType: ObservableObject>: NSView {
             cgContext.setStrokeColor(CGColor(red: 0, green: 0, blue: 1, alpha: 1))
             cgContext.addArc(center: mousePos, radius: 5, startAngle: 0, endAngle: CGFloat.pi * 2, clockwise: true)
             cgContext.strokePath()
-
-           // renderTransform.apply(point: <#T##Vector#>, canvasSize: <#T##Vector2D#>)
-
         }
 
         // draw frame

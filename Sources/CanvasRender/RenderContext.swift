@@ -92,16 +92,21 @@ public struct OrthographicTransform: RenderTransformer {
     }
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
-        let projectionMatrix = Matrices.orthoProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 10, zFar: 200)
-        let modelViewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
-        let worldPosition = Matrices.translationMatrix(pos: point)
-        let clipSpace = projectionMatrix * modelViewMatrix * worldPosition
-        let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize
+        let zoom = 1.0  / 4.0
+
+        let modelMatrix = Matrices.translationMatrix(pos: point)
+        let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
+        let projectionMatrix = Matrices.orthoProjectionMatrix(width: canvasSize.x * zoom, height: canvasSize.y * zoom, zNear: 1, zFar: 20)
+
+        let clipSpace = projectionMatrix * viewMatrix * modelMatrix
+        // let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize
 
         // homogenous coordinates to cartesian
-        let cartesian = Vector2D(clipSpace.columns.3.x / clipSpace.columns.3.w, clipSpace.columns.3.y / clipSpace.columns.3.w) * canvasSize
+        // let cartesian = Vector2D(-clipSpace.columns.3.x / clipSpace.columns.3.w, -clipSpace.columns.3.y / clipSpace.columns.3.w)
+        let cartesian = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y)
 
-        return cartesian
+        let screenSpace = cartesian * canvasSize
+        return screenSpace
     }
 }
 
@@ -125,7 +130,7 @@ public struct PerspectiveTransform: RenderTransformer {
         // world space to camera space
         let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
         // camera to screen
-        let projectionMatrix = Matrices.perspectiveProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 10, zFar: 200, fovY: .pi * 0.8)
+        let projectionMatrix = Matrices.perspectiveProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 1, zFar: 20, fovY: .pi * 0.4)
 
         let clipSpace = projectionMatrix * viewMatrix * modelMatrix
         // homogenous coordinates to cartesian
@@ -137,6 +142,12 @@ public struct PerspectiveTransform: RenderTransformer {
 }
 
 enum Matrices {
+    ///
+    ///
+    /// Note: These are supposed to be right handed matrices with positive Z up
+    ///
+    ///
+
     static func translationMatrix(pos: Vector) -> simd_double4x4 {
         return simd_double4x4(rows: [
             simd_double4(1, 0, 0, pos.x),
@@ -146,16 +157,25 @@ enum Matrices {
         ])
     }
 
+    static func scaleMatrix(scale: Double) -> simd_double4x4 {
+        return simd_double4x4(rows: [
+            simd_double4(scale, 0, 0, 0),
+            simd_double4(0, scale, 0, 0),
+            simd_double4(0, 0, scale, 0),
+            simd_double4(0, 0, 0, 1),
+        ])
+    }
+
     static func viewSpaceMatrix(eye: Vector, rotation: Quat) -> simd_double4x4 {
-        let right = rotation.inverse.act(Vector(1, 0, 0))
-        let forward = rotation.inverse.act(Vector(0, 1, 0))
-        let up = rotation.inverse.act(Vector(0, 0, 1))
+        let right = rotation.act(Vector(1, 0, 0))
+        let forward = rotation.act(Vector(0, -1, 0))
+        let up = rotation.act(Vector(0, 0, 1))
 
         let vewMatrix = simd_double4x4(rows: [
-            simd_double4(right.x, forward.x, up.x, eye.x),
-            simd_double4(right.y, forward.y, up.y, eye.y),
-            simd_double4(right.z, forward.z, up.z, eye.z),
-            simd_double4(-simd_dot(right, eye), -simd_dot(forward, eye), -simd_dot(up, eye), 1),
+            simd_double4(right.x, right.y, right.z, -simd_dot(eye, right)),
+            simd_double4(up.x, up.y, up.z, -simd_dot(eye, up)),
+            simd_double4(forward.x, forward.y, forward.z, -simd_dot(eye, forward)),
+            simd_double4(0, 0, 0, 1),
         ])
         return vewMatrix
     }
@@ -171,25 +191,26 @@ enum Matrices {
          return matrix
      } */
 
+    /*
+     static func perspectiveProjectionMatrix(width: Double, height: Double, zNear: Double, zFar: Double) -> simd_double4x4 {
+     // right handed matrix
+     let matrix = simd_double4x4(rows: [
+     simd_double4(2 * zNear / width, 0, 0, 0),
+     simd_double4(0, 2 * zNear / height, 0, 0),
+     simd_double4(0, 0, zFar / (zNear - zFar), -1),
+     simd_double4(0, 0, zNear * zFar / (zNear - zFar), 0),
+     ])
+
+     return matrix
+     }*/
+
     static func orthoProjectionMatrix(width: Double, height: Double, zNear: Double, zFar: Double) -> simd_double4x4 {
         let matrix = simd_double4x4(rows: [
             simd_double4(2 / width, 0, 0, 0),
             simd_double4(0, 2 / height, 0, 0),
-            simd_double4(0, 0, 1 / (zNear - zFar), 0),
-            simd_double4(0, 0, zNear / (zNear / zFar), 1),
+            simd_double4(0, 0, 1 / (zNear - zFar), -1),
+            simd_double4(0, 0, zNear / (zNear / zFar), 0),
         ])
-        return matrix
-    }
-
-    static func perspectiveProjectionMatrix(width: Double, height: Double, zNear: Double, zFar: Double) -> simd_double4x4 {
-        // right handed matrix
-        let matrix = simd_double4x4(rows: [
-            simd_double4(2 * zNear / width, 0, 0, 0),
-            simd_double4(0, 2 * zNear / height, 0, 0),
-            simd_double4(0, 0, zFar / (zNear - zFar), -1),
-            simd_double4(0, 0, zNear * zFar / (zNear - zFar), 0),
-        ])
-
         return matrix
     }
 

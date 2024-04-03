@@ -1,6 +1,7 @@
 import CoreGraphics
 import CoreText
 import Foundation
+import SwiftUI
 
 public protocol RenderTarget {
     func addLine(to point: CGPoint)
@@ -15,6 +16,112 @@ public protocol RenderTarget {
     func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool)
     func addComment(_ string: String)
     func circle(center: CGPoint, radius: CGFloat)
+}
+
+class GraphicsContextRenderTarget: RenderTarget {
+    private let context: GraphicsContext
+
+    private var currentPath: SwiftUI.Path?
+    private var currentStrokeColor: Color = .black
+    private var currentStrokeStyle = StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round)
+
+    init(context: GraphicsContext) {
+        self.context = context
+    }
+
+    func beginPath() {
+        self.currentPath = SwiftUI.Path()
+    }
+
+    func strokePath() {
+        guard let currentPath else {
+            return
+        }
+        context.stroke(currentPath, with: .color(currentStrokeColor), style: currentStrokeStyle)
+        self.currentPath = nil
+    }
+
+    func addLine(to point: CGPoint) {
+        var path = self.currentPath ?? SwiftUI.Path()
+        path.addLine(to: point)
+        self.currentPath = path
+    }
+
+    func move(to point: CGPoint) {
+        var path = self.currentPath ?? SwiftUI.Path()
+        path.move(to: point)
+        self.currentPath = path
+    }
+
+    func closePath() {
+        var path = self.currentPath ?? SwiftUI.Path()
+        path.closeSubpath()
+        self.currentPath = path
+    }
+
+    func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool) {
+        let startPos = CGPoint(x: center.x + cos(startAngle) * radius,
+                               y: center.y + sin(startAngle) * radius)
+
+        self.move(to: startPos)
+
+        var path = self.currentPath ?? SwiftUI.Path()
+
+        path.addArc(center: center,
+                    radius: radius,
+                    startAngle: Angle(radians: startAngle),
+                    endAngle: Angle(radians: endAngle),
+                    clockwise: !counterClockwise)
+
+        self.currentPath = path
+    }
+
+    public func circle(center: CGPoint, radius: CGFloat) {
+        let startPos = CGPoint(x: center.x + radius,
+                               y: center.y)
+
+        var path = self.currentPath ?? SwiftUI.Path()
+        path.addEllipse(in: CGRect(x: center.x - radius,
+                                   y: center.y - radius,
+                                   width: radius * 2,
+                                   height: radius * 2))
+        self.currentPath = path
+
+        self.move(to: startPos)
+    }
+
+    func addComment(_ string: String) {
+        // no op
+    }
+
+    func setLineDash(phase: CGFloat, lengths: [CGFloat]) {
+        self.currentStrokeStyle = StrokeStyle(lineWidth: currentStrokeStyle.lineWidth,
+                                              lineCap: currentStrokeStyle.lineCap,
+                                              lineJoin: currentStrokeStyle.lineJoin,
+                                              miterLimit: currentStrokeStyle.miterLimit,
+                                              dash: lengths,
+                                              dashPhase: phase)
+    }
+
+    func setStrokeColor(_ color: CGColor) {
+        self.currentStrokeColor = SwiftUI.Color(cgColor: color)
+    }
+
+    func setLineWidth(_ width: CGFloat) {
+        self.currentStrokeStyle = StrokeStyle(lineWidth: width,
+                                              lineCap: currentStrokeStyle.lineCap,
+                                              lineJoin: currentStrokeStyle.lineJoin,
+                                              miterLimit: currentStrokeStyle.miterLimit,
+                                              dash: currentStrokeStyle.dash,
+                                              dashPhase: currentStrokeStyle.dashPhase)
+    }
+
+    func text(_ string: String, position: CGPoint, size: CGFloat) {
+        let text = SwiftUI.Text(verbatim: string).font(.system(size: size))
+        let resolvedText = context.resolve(text)
+
+        context.draw(text, at: position, anchor: .bottomLeading)
+    }
 }
 
 extension CGContext: RenderTarget {
@@ -172,7 +279,7 @@ public class DXFRenderTarget: RenderTarget {
 
         dxfContent += """
 
-        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle), is_counter_clockwise=\(counterClockwise ? "True": "False"))
+        arc = ConstructionArc(center=(\(center.x), \(center.y)), radius=\(radius.formatted), start_angle=\(formattedStartAngle), end_angle=\(formattedEndAngle), is_counter_clockwise=\(counterClockwise ? "True" : "False"))
         arc.add_to_layout(msp, dxfattribs={\"layer\": \"\(layer.string)\", \"linetype\": \"\(layer.linetype)\"})
         """
     }

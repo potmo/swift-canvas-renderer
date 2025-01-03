@@ -180,6 +180,10 @@ public extension Vector {
     func projected(ontoPlaneWithNormal normal: Vector) -> Vector {
         return ((1 / pow(normal.length, 2)) * normal).cross(self.cross(normal))
     }
+
+    func bisected(_ other: Vector) -> Vector {
+        return (self + other).normalized
+    }
 }
 
 public extension simd_double2 {
@@ -257,6 +261,27 @@ public extension Double {
 public extension Quat {
     static var identity: Quat {
         return Quat(vector: simd_double4(x: 0, y: 0, z: 0, w: 1))
+    }
+}
+
+public extension Quat {
+    init(eye: SIMD3<Double>, target: SIMD3<Double>, up: SIMD3<Double>) {
+        // Calculate forward direction (normalized vector pointing from eye to position)
+        let forward = (eye - target).normalized
+
+        // Calculate right direction (normalized vector perpendicular to forward and up)
+        let right = up.cross(forward).normalized
+
+        // Calculate actual up direction (perpendicular to forward and right)
+        let actualUp = forward.cross(right)
+
+        // Create a 3x3 rotation matrix to align with the new basis
+        let rotationMatrix = double3x3(columns: (right, forward, -actualUp))
+
+        // Convert the rotation matrix to a quaternion
+        let quaternion = simd_quatd(rotationMatrix)
+
+        self = quaternion
     }
 }
 

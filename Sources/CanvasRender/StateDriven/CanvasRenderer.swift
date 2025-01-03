@@ -50,4 +50,3 @@ struct CanvasRenderer<StateType: ObservableObject>: NSViewRepresentable {
     class Coordinator {
     }
 }
-

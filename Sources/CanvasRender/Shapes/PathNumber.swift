@@ -6,27 +6,25 @@ import SwiftUI
 public struct PathNumber: DrawableShape {
     let paths: [Path]
 
-    public init(number: Int, topCorner: Vector, sideDirection: Vector, downDirection: Vector, scale: Double, spacing: Double = 1.0) {
+    public init(number: String, topCorner: Vector, sideDirection: Vector, downDirection: Vector, scale: Double, spacing: Double = 1.0) {
         let letterSpacing = scale * spacing
 
-        let digits: [Int] = "\(number)"
-            .compactMap(\.wholeNumberValue)
-
-        self.paths = digits.enumerated().map { index, digit in
+        self.paths = number.enumerated().map { index, digit in
 
             let localTopCorner = topCorner + sideDirection.scaled(by: letterSpacing * Double(index))
 
             switch digit {
-            case 0: return Self.zero(localTopCorner, sideDirection, downDirection, scale)
-            case 1: return Self.one(localTopCorner, sideDirection, downDirection, scale)
-            case 2: return Self.two(localTopCorner, sideDirection, downDirection, scale)
-            case 3: return Self.three(localTopCorner, sideDirection, downDirection, scale)
-            case 4: return Self.four(localTopCorner, sideDirection, downDirection, scale)
-            case 5: return Self.five(localTopCorner, sideDirection, downDirection, scale)
-            case 6: return Self.six(localTopCorner, sideDirection, downDirection, scale)
-            case 7: return Self.seven(localTopCorner, sideDirection, downDirection, scale)
-            case 8: return Self.eight(localTopCorner, sideDirection, downDirection, scale)
-            case 9: return Self.nine(localTopCorner, sideDirection, downDirection, scale)
+            case "0": return Self.zero(localTopCorner, sideDirection, downDirection, scale)
+            case "1": return Self.one(localTopCorner, sideDirection, downDirection, scale)
+            case "2": return Self.two(localTopCorner, sideDirection, downDirection, scale)
+            case "3": return Self.three(localTopCorner, sideDirection, downDirection, scale)
+            case "4": return Self.four(localTopCorner, sideDirection, downDirection, scale)
+            case "5": return Self.five(localTopCorner, sideDirection, downDirection, scale)
+            case "6": return Self.six(localTopCorner, sideDirection, downDirection, scale)
+            case "7": return Self.seven(localTopCorner, sideDirection, downDirection, scale)
+            case "8": return Self.eight(localTopCorner, sideDirection, downDirection, scale)
+            case "9": return Self.nine(localTopCorner, sideDirection, downDirection, scale)
+            case ".": return Self.period(localTopCorner, sideDirection, downDirection, scale)
             default: return Self.space(localTopCorner, sideDirection, downDirection, scale)
             }
         }
@@ -40,6 +38,20 @@ public struct PathNumber: DrawableShape {
 
     private static func space(_ topCorner: Vector, _ right: Vector, _ down: Vector, _ scale: Double) -> Path {
         return Path(closed: false) {
+        }
+    }
+
+    private static func period(_ topCorner: Vector, _ right: Vector, _ down: Vector, _ scale: Double) -> Path {
+        let bottomCenter = topCorner + right.scaled(by: scale).scaled(by: 0.5) + down.scaled(by: scale).scaled(by: 0.9)
+        let bottomRadius = scale * 0.1
+        let axis = right.cross(down)
+        return Path(closed: false) {
+            Comment("period")
+
+            AxisOrbitCounterClockwise(pivot: bottomCenter,
+                                      point: bottomCenter + right.scaled(by: bottomRadius),
+                                      angle: .pi * 2,
+                                      axis: axis)
         }
     }
 

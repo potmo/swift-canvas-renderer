@@ -20,7 +20,10 @@ public class ManualCanvasRenderer {
     func render(graphicsContext: inout GraphicsContext, frame: CGSize) {
         let shapes = self.maker.shapes()
 
-        let transform = CGAffineTransform.identity.concatenating(CGAffineTransform(translationX: frame.width / 2, y: frame.height / 2)) // zoomTransform.concatenating(translateTransform)
+        let transform = CGAffineTransform.identity
+            .concatenating(CGAffineTransform(translationX: frame.width / 2, y: frame.height / 2))
+
+        // zoomTransform.concatenating(translateTransform)
 
         let renderTarget: RenderTarget = GraphicsContextRenderTarget(context: graphicsContext)
 
@@ -36,11 +39,13 @@ public class ManualCanvasRenderer {
 
         shapes.forEach { $0.draw(in: context) }
 
+        /*
         let mousePos = transformer.unapply(point: mousePos, canvasSize: Vector2D(frame.width, frame.height))
         Decoration(color: .orange) {
             Arrow(from: mousePos.point, to: mousePos.point + mousePos.direction.scaled(by: 2))
         }.draw(in: context)
-
+*/
+        
         // draw frame
         let border = 10.0
         renderTarget.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
@@ -59,20 +64,21 @@ public struct ShapeCanvas: View {
     @State var camera: PerspectiveCamera
     @State var currentTime: CurrentTime
 
-    public init(renderer: ManualCanvasRenderer, camera: PerspectiveCamera) {
+    @State var updateCallback: (_ frame: CGSize, _ time: Double) -> Void
+
+    public init(renderer: ManualCanvasRenderer, camera: PerspectiveCamera, _ onTick: @escaping (_ frame: CGSize, _ time: Double) -> Void) {
         self.renderer = renderer
         self.camera = camera
         self.currentTime = CurrentTime()
+        self.updateCallback = onTick
     }
 
     public var body: some View {
         SwiftUI.TimelineView(.animation) { context in
             SwiftUI.Canvas(opaque: true, colorMode: .linear) { graphicsContext, frame in
+                currentTime.update(with: context.date)
+                updateCallback(frame, currentTime.timeSinceStart)
                 renderer.render(graphicsContext: &graphicsContext, frame: frame)
-                self.currentTime.update(with: context.date)
-
-                // camera.move(to: Vector(currentTime.timeSinceStart, 0, 10))
-                // camera.rotate(to: Quat(angle: .pi * 2 * 0.01 * currentTime.timeSinceStart, axis: Vector(1, 0, 0)))
             }
         }
     }

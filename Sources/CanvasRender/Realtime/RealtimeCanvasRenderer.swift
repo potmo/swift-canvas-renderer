@@ -22,7 +22,9 @@ struct RealtimeCanvasRenderer: NSViewRepresentable {
                                   canvasSize: canvasSize)
 
         Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            view.setNeedsDisplay(view.bounds)
+            Task{@MainActor in
+                view.setNeedsDisplay(view.bounds)
+            }
         }
 
         self.view = view

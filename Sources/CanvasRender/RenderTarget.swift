@@ -8,6 +8,7 @@ public protocol RenderTarget {
     func move(to point: CGPoint)
     func beginPath()
     func strokePath()
+    func fillPath()
     func closePath()
     func setLineDash(phase: CGFloat, lengths: [CGFloat])
     func setStrokeColor(_ color: CGColor)
@@ -38,6 +39,15 @@ class GraphicsContextRenderTarget: RenderTarget {
             return
         }
         context.stroke(currentPath, with: .color(currentStrokeColor), style: currentStrokeStyle)
+        self.currentPath = nil
+    }
+
+    func fillPath() {
+        guard let currentPath else {
+            return
+        }
+
+        context.fill(currentPath, with: .color(currentStrokeColor))
         self.currentPath = nil
     }
 
@@ -143,6 +153,10 @@ extension CGContext: RenderTarget {
                     startAngle: startAngle,
                     endAngle: endAngle,
                     clockwise: !counterClockwise)
+    }
+
+    public func fillPath() {
+        self.fillPath(using: .evenOdd)
     }
 
     public func circle(center: CGPoint, radius: CGFloat) {
@@ -314,6 +328,11 @@ public class DXFRenderTarget: RenderTarget {
         currentPath = []
     }
 
+    public func fillPath() {
+        // FIXME: Implement
+        fatalError("not implemented")
+    }
+
     public func closePath() {
         guard let firstPoint = currentPath.first else {
             return
@@ -342,44 +361,68 @@ public class DXFRenderTarget: RenderTarget {
     public func text(_ string: String, position: CGPoint, size: CGFloat) {
     }
 
-    public var dxf: String {
+    public func dxf(pdfFileName: String?, dxfFileName: String?, includeHeader: Bool) -> String {
+        let pdfOutput: String
+        let header: String
+        let dxfOutput: String
+
+        if includeHeader {
+            header = """
+            import ezdxf
+            from ezdxf.addons.drawing import Frontend, RenderContext, pymupdf, layout, config
+            from ezdxf.math import ConstructionArc
+            from sys import stdout, stderr
+            from ezdxf import units
+            """
+        } else {
+            header = ""
+        }
+
+        if let dxfFileName {
+            dxfOutput = """
+            doc = ezdxf.new("AC1027", setup=True) # Autocad R2013
+            doc.units = units.MM
+            msp = doc.modelspace()
+            \(DXFLayer.allCases.flatMap {
+                [
+                    "shapeLayer = doc.layers.add(\"\($0.string)\")",
+                    "shapeLayer.color = ezdxf.colors.\($0.color)",
+                    "shapeLayer.linetype = \"\($0.linetype)\"",
+                ]
+            }.joined(separator: "\n"))
+            \(dxfContent)
+
+            doc.validate()
+
+            doc.saveas("\(dxfFileName)")
+
+            """
+        } else {
+            dxfOutput = ""
+        }
+
+        if let pdfFileName {
+            pdfOutput = """
+            context = RenderContext(doc)
+            backend = pymupdf.PyMuPdfBackend()
+            cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE)
+            frontend = Frontend(context, backend, config=cfg)
+            frontend.draw_layout(msp)
+            page = layout.Page(210, 297, layout.Units.mm, margins=layout.Margins.all(20))
+            pdf_bytes = backend.get_pdf_bytes(page)
+            with open("\(pdfFileName)", "wb") as fp:
+                fp.write(pdf_bytes)
+
+            #doc.write(stdout) # this prints it all to stdout
+            """
+        } else {
+            pdfOutput = ""
+        }
+
         return """
-        import ezdxf
-        from ezdxf.addons.drawing import Frontend, RenderContext, pymupdf, layout, config
-        from ezdxf.math import ConstructionArc
-        from sys import stdout, stderr
-        from ezdxf import units
-
-        doc = ezdxf.new("AC1027", setup=True) # Autocad R2013
-        doc.units = units.MM
-        msp = doc.modelspace()
-        \(DXFLayer.allCases.flatMap {
-            [
-                "shapeLayer = doc.layers.add(\"\($0.string)\")",
-                "shapeLayer.color = ezdxf.colors.\($0.color)",
-                "shapeLayer.linetype = \"\($0.linetype)\"",
-            ]
-        }.joined(separator: "\n"))
-        \(dxfContent)
-
-
-        doc.validate()
-
-        doc.saveas("test-generated.dxf")
-
-
-        context = RenderContext(doc)
-        backend = pymupdf.PyMuPdfBackend()
-        cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE)
-        frontend = Frontend(context, backend, config=cfg)
-        frontend.draw_layout(msp)
-        page = layout.Page(210, 297, layout.Units.mm, margins=layout.Margins.all(20))
-        pdf_bytes = backend.get_pdf_bytes(page)
-        with open("test-generated.pdf", "wb") as fp:
-            fp.write(pdf_bytes)
-
-        #doc.write(stdout) # this prints it all to stdout
-
+        \(header)
+        \(dxfOutput)
+        \(pdfOutput)
         """
     }
 }
@@ -465,6 +508,11 @@ public class SVGRenderTarget: RenderTarget {
         }
         let strokeWidth = "stroke-width=\"\(currentStrokeWidth)\""
         svgContent += "<path d=\"\(content)\" \(color) \(dash) fill=\"none\" />\n"
+    }
+
+    public func fillPath() {
+        // FIXME: Implement
+        fatalError("not implemented")
     }
 
     public func text(_ string: String, position: CGPoint, size: CGFloat) {

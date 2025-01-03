@@ -83,6 +83,13 @@ public struct AxisAlignedOrthographicTransform: RenderTransformer {
     }
 }
 
+public class RenderTransform2D {
+    public var transform: CGAffineTransform
+    init(transform: CGAffineTransform) {
+        self.transform = transform
+    }
+}
+
 public struct OrthographicTransform: RenderTransformer {
     private let camera: PerspectiveCamera
     public init(camera: PerspectiveCamera) {
@@ -98,25 +105,56 @@ public struct OrthographicTransform: RenderTransformer {
     }
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
-        let zoom = 1.0 / 4.0
+        let zoom = 0.5 // 0.5 makes the export work
 
         let modelMatrix = Matrices.translationMatrix(pos: point)
         let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
-        let projectionMatrix = Matrices.orthoProjectionMatrix(width: canvasSize.x * zoom, height: canvasSize.y * zoom, zNear: 1, zFar: 20)
+        let projectionMatrix = Matrices.orthoProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 1, zFar: 20)
 
         let clipSpace = projectionMatrix * viewMatrix * modelMatrix
         // let screenSpace = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y) * canvasSize
 
         // homogenous coordinates to cartesian
-        // let cartesian = Vector2D(-clipSpace.columns.3.x / clipSpace.columns.3.w, -clipSpace.columns.3.y / clipSpace.columns.3.w)
+        //  let cartesian = Vector2D(-clipSpace.columns.3.x / clipSpace.columns.3.w, -clipSpace.columns.3.y / clipSpace.columns.3.w)
         let cartesian = Vector2D(clipSpace.columns.3.x, clipSpace.columns.3.y)
 
-        let screenSpace = cartesian * canvasSize
+        let screenSpace = cartesian * canvasSize * zoom
         return screenSpace
     }
 
     public func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
         fatalError("not implemented")
+    }
+}
+
+public class OffsettingTransformer: RenderTransformer {
+    public var transform: CGAffineTransform
+    public let parent: RenderTransformer
+
+    public var cameraDirection: Vector {
+        parent.cameraDirection
+    }
+
+    public var isTopDownOrthographic: Bool {
+        parent.isTopDownOrthographic
+    }
+
+    public init(parent: RenderTransformer, transform: CGAffineTransform) {
+        self.transform = transform
+        self.parent = parent
+    }
+
+    public func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
+        let transformed = point.cgPoint.applying(transform.inverted())
+        let position = parent.unapply(point: Vector2D(x: transformed.x, y: transformed.y),
+                                      canvasSize: canvasSize)
+        return position
+    }
+
+    public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
+        let position = parent.apply(point: point, canvasSize: canvasSize)
+        let transformed = position.cgPoint.applying(transform)
+        return Vector2D(x: transformed.x, y: transformed.y)
     }
 }
 
@@ -165,7 +203,7 @@ public struct PerspectiveTransform: RenderTransformer {
                                  1.0)
         let far = SIMD4<Double>(-(point.x - halfScreenWidth) / canvasSize.x,
                                 -(point.y - halfScreenHeight) / canvasSize.y,
-                                 0.5,
+                                0.5,
                                 1)
 
         let nearResult = matInverse * near

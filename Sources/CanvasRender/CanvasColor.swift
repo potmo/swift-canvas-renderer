@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 import SwiftUI
 
-public struct CanvasColor: Equatable {
+public struct CanvasColor: Equatable, Sendable {
     public static let black = CanvasColor(0, 0, 0, 1)
     public static let white = CanvasColor(1, 1, 1, 1)
     public static let yellow = CanvasColor(1, 0.8, 0, 1)

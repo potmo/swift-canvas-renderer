@@ -70,6 +70,13 @@ public extension Vector {
     func angleBetween2(and other: Vector) -> Double {
         return acos(self.dot(other) / (self.length / other.length))
     }
+
+    func angleBetween3(and other: Vector, around rotationAxis: Vector) -> Double {
+        let determinent = rotationAxis.dot(self.cross(other))
+        let dot = self.dot(other)
+
+        return atan2(-determinent, -dot) + .pi
+    }
 }
 
 public extension Vector {
@@ -245,6 +252,12 @@ public extension Vector {
 public extension Vector2D {
     var cgPoint: CGPoint {
         return CGPoint(x: x, y: y)
+    }
+}
+
+public extension CGPoint {
+    var vector2D: Vector2D {
+        return Vector2D(x: Double(x), y: Double(y))
     }
 }
 

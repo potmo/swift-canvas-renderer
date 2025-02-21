@@ -35,12 +35,13 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
 
         let axisIsAlignedWithCameraAxis = distance <= 0.000001
 
-        let axisIsAlignedWithZ = abs(axis.dot(Vector(0, 0, 1))) >= 0.9999999999
+        let axisIsAlignedWithZ = abs(axis.dot(Vector(0, 0, 1))) >= 0.9999999
 
         // make a special case for when the rotation axis is aligned with z and the camera axis is aligned with z as well
         if axisIsAlignedWithCameraAxis, axisIsAlignedWithZ {
             drawWithArc(in: context)
         } else {
+          //  fatalError("This should not happen")
             drawWithPoints(in: context)
         }
     }
@@ -51,32 +52,22 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         // transform the positions to capture the camera transform without doing the matrix math
         let transformedPivot = context.transform(pivot)
         let transformedPoint = context.transform(point)
-
         let transformedLever = Vector(transformedPoint.x, transformedPoint.y, 0) - Vector(transformedPivot.x, transformedPivot.y, 0)
         let transformedRadius = transformedLever.length
-
-        let startAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
-        let endAngle = startAngle + angle
-
-        // if the rotation axis is upside down then we have to flip things
-        let fixedEndAngle: Double
-        let fixedStartAngle: Double
-
-        // FIXME: Here we can compute the winding using the cross product to figure out the normal of the plane created by start, end and center and then use that to set the CCW alternatively swap start and end to always have CCW
-
-        if axis.dot(Vector(0, 0, 1)) < 0 || angle < 0 {
-            let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
-            fixedEndAngle = startAngle
-            fixedStartAngle = startAngle - delta
-
-        } else {
-            fixedEndAngle = endAngle
-            fixedStartAngle = startAngle
-        }
-
-        // make sure the we draw a line to the start position first and end up at the end position
         let transformedStartPoint = context.transform(point)
         let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
+
+        var startAngle: Double
+        var endAngle: Double
+        let newAxis = findNewAxis(in: context)
+
+        if newAxis.z * axis.z < 0 {
+            startAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
+            endAngle = startAngle - angle
+        } else {
+            endAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
+            startAngle = endAngle + angle
+        }
 
         context.renderTarget.move(to: transformedStartPoint)
 
@@ -86,12 +77,20 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         } else {
             context.renderTarget.arc(center: transformedPivot,
                                      radius: transformedRadius,
-                                     startAngle: fixedStartAngle,
-                                     endAngle: fixedEndAngle,
+                                     startAngle: endAngle,
+                                     endAngle: startAngle,
                                      counterClockwise: true)
         }
 
         context.renderTarget.move(to: transformedEndPoint)
+    }
+
+    private func findNewAxis(in context: RenderContext) -> Vector {
+        // We know that the axis is aligned with the z axis or the inverted z axis but offsets of flips might have occured so we need to compute the actual axis. Then we can get the cross product to figure out the new axis and see if it is flipped
+        let northArrowTransformed = context.transform(Vector(0, 1, 0)).vector2D - context.transform(Vector(0, 0, 0)).vector2D
+        let eastArrowTransformed = context.transform(Vector(1, 0, 0)).vector2D - context.transform(Vector(0, 0, 0)).vector2D
+        return Vector(eastArrowTransformed.x, eastArrowTransformed.y, 0).normalized
+            .cross(Vector(northArrowTransformed.x, northArrowTransformed.y, 0).normalized)
     }
 
     private func drawWithPoints(in context: RenderContext) {

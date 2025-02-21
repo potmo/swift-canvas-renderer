@@ -7,18 +7,21 @@ public struct Decoration: DrawableShape {
     let color: CanvasColor?
     let lineStyle: LineStyle?
     let lineWidth: Double?
-    let shapes: [DrawableShape]
+    @CanvasBuilder let builder: () -> [DrawableShape]
     let hidden: Bool?
 
-    public init(color: CanvasColor? = nil, lineStyle: LineStyle? = nil, lineWidth: Double? = nil, hidden: Bool? = false, @CanvasBuilder _ builder: () -> [DrawableShape]) {
+    public init(color: CanvasColor? = nil, lineStyle: LineStyle? = nil, lineWidth: Double? = nil, hidden: Bool? = false, @CanvasBuilder _ builder: @escaping () -> [DrawableShape]) {
         self.color = color
         self.lineStyle = lineStyle
-        self.shapes = builder()
+        self.builder = builder
         self.lineWidth = lineWidth
         self.hidden = hidden
     }
 
     public func draw(in context: RenderContext) {
+
+        let shapes = builder()
+        
         // set line style
         let resetLineStyle: LineStyle?
         if let lineStyle, context.lineStyle != lineStyle {

@@ -4,13 +4,13 @@ import simd
 import SwiftUI
 
 public struct RenderContext {
-    let renderTarget: RenderTarget
-    let color: CanvasColor
-    let lineWidth: Double
-    let lineStyle: Decoration.LineStyle
-    let transform2d: CGAffineTransform
-    let transform3d: RenderTransformer
-    let canvasSize: Vector2D
+    public let renderTarget: RenderTarget
+    public let color: CanvasColor
+    public let lineWidth: Double
+    public let lineStyle: Decoration.LineStyle
+    public let transform2d: CGAffineTransform
+    public let transform3d: RenderTransformer
+    public let canvasSize: Vector2D
 
     public init(canvasSize: Vector2D, renderTarget: RenderTarget, color: CanvasColor, lineWidth: Double, lineStyle: Decoration.LineStyle, transform2d: CGAffineTransform, transform3d: RenderTransformer) {
         self.canvasSize = canvasSize
@@ -32,7 +32,7 @@ public struct RenderContext {
         self.transform3d = transform3d
     }
 
-    func transform(_ vector: Vector) -> CGPoint {
+    public func transform(_ vector: Vector) -> CGPoint {
         let transformed3d = transform3d.apply(point: vector, canvasSize: canvasSize)
         let cgPoint = transformed3d.cgPoint
         let transformedCGPoint = cgPoint.applying(transform2d)

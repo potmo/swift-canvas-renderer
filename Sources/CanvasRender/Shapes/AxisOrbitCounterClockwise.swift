@@ -27,8 +27,15 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
     }
 
     public func drawPartOfPath(in context: RenderContext) {
-        let axisIsAlignedWithCameraAxis = context.transform(Vector(0, 0, 0)) == context.transform(Vector(0, 0, 1))
-        let axisIsAlignedWithZ = abs(axis.dot(Vector(0, 0, 1))) >= 1.0 - .ulpOfOne
+        let lower = context.transform(Vector(0, 0, 0))
+        let upper = context.transform(Vector(0, 0, 1))
+        let lowerVector = Vector2D(x: lower.x, y: lower.y)
+        let upperVector = Vector2D(x: upper.x, y: upper.y)
+        let distance = simd_precise_distance(lowerVector, upperVector)
+
+        let axisIsAlignedWithCameraAxis = distance <= 0.000001
+
+        let axisIsAlignedWithZ = abs(axis.dot(Vector(0, 0, 1))) >= 0.9999999999
 
         // make a special case for when the rotation axis is aligned with z and the camera axis is aligned with z as well
         if axisIsAlignedWithCameraAxis, axisIsAlignedWithZ {
@@ -54,6 +61,8 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         // if the rotation axis is upside down then we have to flip things
         let fixedEndAngle: Double
         let fixedStartAngle: Double
+
+        // FIXME: Here we can compute the winding using the cross product to figure out the normal of the plane created by start, end and center and then use that to set the CCW alternatively swap start and end to always have CCW
 
         if axis.dot(Vector(0, 0, 1)) < 0 || angle < 0 {
             let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))

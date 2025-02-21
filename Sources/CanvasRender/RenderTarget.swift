@@ -388,6 +388,7 @@ public class DXFRenderTarget: RenderTarget {
                     "shapeLayer = doc.layers.add(\"\($0.string)\")",
                     "shapeLayer.color = ezdxf.colors.\($0.color)",
                     "shapeLayer.linetype = \"\($0.linetype)\"",
+                    "shapeLayer.lineweight = \"\(20)\"", // lineweight is mm times 100 so 20 = 0.2mm
                 ]
             }.joined(separator: "\n"))
             \(dxfContent)
@@ -408,7 +409,7 @@ public class DXFRenderTarget: RenderTarget {
             cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE)
             frontend = Frontend(context, backend, config=cfg)
             frontend.draw_layout(msp)
-            page = layout.Page(210, 297, layout.Units.mm, margins=layout.Margins.all(20))
+            page = layout.Page(3000, 1500, layout.Units.mm, margins=layout.Margins.all(20))
             pdf_bytes = backend.get_pdf_bytes(page)
             with open("\(pdfFileName)", "wb") as fp:
                 fp.write(pdf_bytes)

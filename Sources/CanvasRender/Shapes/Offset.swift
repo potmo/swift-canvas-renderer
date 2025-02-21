@@ -1,11 +1,37 @@
 import Foundation
 
-public struct Offset: DrawableShape {
+public struct Offset: DrawableShape, PartOfPath {
     let offset: Vector
-    let shapes: [DrawableShape]
-    public init(_ offset: Vector, @CanvasBuilder _ builder: () -> [DrawableShape]) {
+    let shapeBuilder: () -> [DrawableShape]
+    let partOfPathsBuilder: () -> [PartOfPath]
+
+    public init(_ offset: Vector, @CanvasBuilder _ builder: @escaping () -> [DrawableShape]) {
         self.offset = offset
-        self.shapes = builder()
+        self.shapeBuilder = builder
+        self.partOfPathsBuilder = { [] }
+    }
+
+    public init(_ offset: Vector, @PathBuilder _ builder: @escaping () -> [PartOfPath]) {
+        self.offset = offset
+        self.shapeBuilder = { [] }
+        self.partOfPathsBuilder = builder
+    }
+
+    public func drawPartOfPath(in context: RenderContext) {
+        let offsettingRenderTransformer = OffsetRenderTransformer(original: context.transform3d, offset: offset)
+
+        let newContext = RenderContext(canvasSize: context.canvasSize,
+                                       renderTarget: context.renderTarget,
+                                       color: context.color,
+                                       lineWidth: context.lineWidth,
+                                       lineStyle: context.lineStyle,
+                                       transform2d: context.transform2d,
+                                       transform3d: offsettingRenderTransformer)
+
+        let partOfPaths = partOfPathsBuilder()
+        for partOfPath in partOfPaths {
+            partOfPath.drawPartOfPath(in: newContext)
+        }
     }
 
     public func draw(in context: RenderContext) {
@@ -19,6 +45,7 @@ public struct Offset: DrawableShape {
                                        transform2d: context.transform2d,
                                        transform3d: offsettingRenderTransformer)
 
+        let shapes = shapeBuilder()
         for shape in shapes {
             shape.draw(in: newContext)
         }
@@ -38,7 +65,7 @@ public struct Offset: DrawableShape {
         }
 
         func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
-            //FIXME: This needs to be fixedscaledFar
+            // FIXME: This needs to be fixedscaledFar
             return original.unapply(point: point, canvasSize: canvasSize)
         }
 

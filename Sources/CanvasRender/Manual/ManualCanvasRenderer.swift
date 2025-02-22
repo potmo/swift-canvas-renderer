@@ -25,7 +25,7 @@ public class ManualCanvasRenderer {
 
         // zoomTransform.concatenating(translateTransform)
 
-        let renderTarget: RenderTarget = GraphicsContextRenderTarget(context: graphicsContext)
+        let renderTarget = GraphicsContextRenderTarget(context: graphicsContext)
 
         let context = RenderContext(canvasSize: Vector2D(frame.width, frame.height),
                                     renderTarget: renderTarget,
@@ -40,12 +40,12 @@ public class ManualCanvasRenderer {
         shapes.forEach { $0.draw(in: context) }
 
         /*
-        let mousePos = transformer.unapply(point: mousePos, canvasSize: Vector2D(frame.width, frame.height))
-        Decoration(color: .orange) {
-            Arrow(from: mousePos.point, to: mousePos.point + mousePos.direction.scaled(by: 2))
-        }.draw(in: context)
-*/
-        
+         let mousePos = transformer.unapply(point: mousePos, canvasSize: Vector2D(frame.width, frame.height))
+         Decoration(color: .orange) {
+             Arrow(from: mousePos.point, to: mousePos.point + mousePos.direction.scaled(by: 2))
+         }.draw(in: context)
+         */
+
         // draw frame
         let border = 10.0
         renderTarget.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))

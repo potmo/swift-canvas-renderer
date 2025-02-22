@@ -134,7 +134,45 @@ class GraphicsContextRenderTarget: RenderTarget {
     }
 }
 
-extension CGContext: RenderTarget {
+class CGContextRenderTarget: RenderTarget {
+    private let cgContext: CGContext
+
+    init(cgContext: CGContext) {
+        self.cgContext = cgContext
+    }
+
+    func addLine(to point: CGPoint) {
+        cgContext.addLine(to: point)
+    }
+
+    func move(to point: CGPoint) {
+        cgContext.move(to: point)
+    }
+
+    func beginPath() {
+        cgContext.beginPath()
+    }
+
+    func strokePath() {
+        cgContext.strokePath()
+    }
+
+    func closePath() {
+        cgContext.closePath()
+    }
+
+    func setLineDash(phase: CGFloat, lengths: [CGFloat]) {
+        cgContext.setLineDash(phase: phase, lengths: lengths)
+    }
+
+    func setStrokeColor(_ color: CGColor) {
+        cgContext.setStrokeColor(color)
+    }
+
+    func setLineWidth(_ width: CGFloat) {
+        cgContext.setLineWidth(width)
+    }
+
     public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool = true) {
         // swap the direction of rotation since the CGtransform has screwed things up it makes the cos/sin angle go counter clockwise
         // this makes it go clockwise
@@ -146,33 +184,33 @@ extension CGContext: RenderTarget {
         let startPos = CGPoint(x: center.x + cos(startAngle) * radius,
                                y: center.y + sin(startAngle) * radius)
 
-        self.move(to: startPos)
+        cgContext.move(to: startPos)
 
-        self.addArc(center: center,
-                    radius: radius,
-                    startAngle: startAngle,
-                    endAngle: endAngle,
-                    clockwise: !counterClockwise)
+        cgContext.addArc(center: center,
+                         radius: radius,
+                         startAngle: startAngle,
+                         endAngle: endAngle,
+                         clockwise: !counterClockwise)
     }
 
     public func fillPath() {
-        self.fillPath(using: .evenOdd)
+        cgContext.fillPath(using: .evenOdd)
     }
 
     public func circle(center: CGPoint, radius: CGFloat) {
         let startPos = CGPoint(x: center.x + radius,
                                y: center.y)
 
-        self.addEllipse(in: CGRect(x: center.x - radius,
-                                   y: center.y - radius,
-                                   width: radius * 2,
-                                   height: radius * 2))
+        cgContext.addEllipse(in: CGRect(x: center.x - radius,
+                                        y: center.y - radius,
+                                        width: radius * 2,
+                                        height: radius * 2))
 
-        self.move(to: startPos)
+        cgContext.move(to: startPos)
     }
 
     public func text(_ string: String, position: CGPoint, size: CGFloat) {
-        let context = self
+        let context = cgContext
         context.saveGState()
 
         let myfont = CTFontCreateWithName("Helvetica" as CFString, size, nil)

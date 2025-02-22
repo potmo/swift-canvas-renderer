@@ -77,9 +77,9 @@ class RealtimeCanvas: NSView {
         cgContext.concatenate(flipVerticalTransform)
 
         let transform = zoomTransform.concatenating(translateTransform)
-
+        let renderTarget = CGContextRenderTarget(cgContext: cgContext)
         let context = RenderContext(canvasSize: Vector2D(frame.size.width, frame.size.height),
-                                    renderTarget: cgContext,
+                                    renderTarget: renderTarget,
                                     transform2d: transform,
                                     transform3d: renderTransform)
 

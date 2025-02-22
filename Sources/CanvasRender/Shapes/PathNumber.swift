@@ -68,7 +68,7 @@ public struct PathNumber: DrawableShape {
                                       angle: .pi * 0.9,
                                       axis: axis)
 
-            MoveTo(topCenter + right.scaled(by: topRadius) + down.scaled(by: 0.5) )
+            MoveTo(topCenter + right.scaled(by: topRadius) + down.scaled(by: topRadius))
 
             LineTo(bottomCenter + right.scaled(by: bottomRadius))
 
@@ -77,7 +77,7 @@ public struct PathNumber: DrawableShape {
                                       angle: .pi,
                                       axis: axis)
 
-            MoveTo(topCenter + right.scaled(by: -topRadius) + down.scaled(by: 0.5) )
+            MoveTo(topCenter + right.scaled(by: -topRadius) + down.scaled(by: topRadius))
 
             LineTo(topCenter + right.scaled(by: -topRadius))
         }
@@ -87,7 +87,7 @@ public struct PathNumber: DrawableShape {
         let axis = right.cross(down)
         let topCenter = topCorner + right.scaled(by: scale).scaled(by: 0.53)
         let bottomCenter = topCorner + right.scaled(by: scale).scaled(by: 0.47) + down.scaled(by: scale)
-        //let nubbin = topCenter + Quat(angle: .pi - .pi * 0.3, axis: axis).act(right.scaled(by: scale * 0.2))
+        // let nubbin = topCenter + Quat(angle: .pi - .pi * 0.3, axis: axis).act(right.scaled(by: scale * 0.2))
         return Path(closed: false) {
             Comment("one")
 
@@ -175,7 +175,7 @@ public struct PathNumber: DrawableShape {
             LineTo(startCurve)
             AxisOrbitCounterClockwise(pivot: rotationCenter,
                                       point: startCurve,
-                                      angle: .pi * 1.5,
+                                      angle: .pi * 1.6,
                                       axis: -axis)
         }
     }
@@ -202,11 +202,11 @@ public struct PathNumber: DrawableShape {
             Comment("eight")
             AxisOrbitCounterClockwise(pivot: topRotationCenter,
                                       point: topRotationCenter + down.scaled(by: scale * 0.25),
-                                      angle: .pi * 1.5,
+                                      angle: .pi * 1.6,
                                       axis: axis)
             AxisOrbitCounterClockwise(pivot: bottomRotationCenter,
                                       point: bottomRotationCenter + down.scaled(by: -scale * 0.25),
-                                      angle: .pi * 1.5,
+                                      angle: .pi * 1.6,
                                       axis: axis)
         }
     }
@@ -224,7 +224,7 @@ public struct PathNumber: DrawableShape {
             LineTo(startCurve)
             AxisOrbitCounterClockwise(pivot: rotationCenter,
                                       point: startCurve,
-                                      angle: .pi * 1.5,
+                                      angle: .pi * 1.6,
                                       axis: -axis)
         }
     }

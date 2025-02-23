@@ -22,6 +22,10 @@ public struct Arrow: DrawableShape {
         // convert to xy plane
         let vector2d = context.transform3d.apply(point: vector, canvasSize: context.canvasSize)
 
+        if vector.length == 0 {
+            return
+        }
+
         if vector2d.length == 0 {
             return
         }

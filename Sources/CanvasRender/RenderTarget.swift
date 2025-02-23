@@ -240,6 +240,402 @@ class CGContextRenderTarget: RenderTarget {
     }
 }
 
+public class DXFLWLineRenderTarget: RenderTarget {
+    static let snappingThreshold: CGFloat = 0.0001
+
+    private var currentPosition: CGPoint? = nil
+    public private(set) var openNodes: [NodePath] = []
+    public private(set) var closedNodes: [NodePath] = []
+
+    public init() {
+    }
+
+    public func dxf(pdfFileName: String?, dxfFileName: String?, includeHeader: Bool) -> String {
+        let pdfOutput: String
+        let header: String
+        let dxfOutput: String
+
+        let allNodes = openNodes + closedNodes
+        let dxfContent = allNodes.map { node in
+            let points = node.array.flatMap(\.content.polyLineString).joined(separator: ", ")
+            return "msp.add_lwpolyline([\(points)])"
+        }.joined(separator: "\n")
+
+        if includeHeader {
+            header = """
+            import ezdxf
+            from ezdxf.addons.drawing import Frontend, RenderContext, pymupdf, layout, config
+            from ezdxf.math import ConstructionArc
+            from sys import stdout, stderr
+            from ezdxf import units
+            """
+        } else {
+            header = ""
+        }
+
+        if let dxfFileName {
+            dxfOutput = """
+            doc = ezdxf.new("AC1027", setup=True) # Autocad R2013
+            doc.units = units.MM
+            msp = doc.modelspace()
+            \(DXFRenderTarget.DXFLayer.allCases.flatMap {
+                [
+                    "shapeLayer = doc.layers.add(\"\($0.string)\")",
+                    "shapeLayer.color = ezdxf.colors.\($0.color)",
+                    "shapeLayer.linetype = \"\($0.linetype)\"",
+                    "shapeLayer.lineweight = \"\(20)\"", // lineweight is mm times 100 so 20 = 0.2mm
+                ]
+            }.joined(separator: "\n"))
+            \(dxfContent)
+
+            doc.validate()
+
+            doc.saveas("\(dxfFileName)")
+
+            """
+        } else {
+            dxfOutput = ""
+        }
+
+        if let pdfFileName {
+            pdfOutput = """
+            context = RenderContext(doc)
+            backend = pymupdf.PyMuPdfBackend()
+            cfg = config.Configuration(background_policy=config.BackgroundPolicy.WHITE)
+            frontend = Frontend(context, backend, config=cfg)
+            frontend.draw_layout(msp)
+            page = layout.Page(3000, 1500, layout.Units.mm, margins=layout.Margins.all(20))
+            pdf_bytes = backend.get_pdf_bytes(page)
+            with open("\(pdfFileName)", "wb") as fp:
+                fp.write(pdf_bytes)
+
+            #doc.write(stdout) # this prints it all to stdout
+            """
+        } else {
+            pdfOutput = ""
+        }
+
+        return """
+        \(header)
+        \(dxfOutput)
+        \(pdfOutput)
+        """
+    }
+
+    private func add(_ nodeContent: NodeContent) {
+        let node = Node(content: nodeContent)
+
+        let nodePath = NodePath(node: node)
+        openNodes.append(nodePath)
+        tryJoinNodes(node: nodePath)
+    }
+
+    private func moveNodeIfClosed(node: NodePath) {
+        if node.closed {
+            openNodes.removeAll { $0 === node }
+            closedNodes.append(node)
+        }
+    }
+
+    private func tryJoinNodes(node: NodePath) {
+        for openNode in openNodes where openNode !== node {
+            if openNode.tail.content.endPoint.distance(to: node.head.content.startPoint) < Self.snappingThreshold {
+                openNode.joinWith(headOf: node)
+                openNodes.removeAll { $0 === node }
+
+                if openNode.closed {
+                    moveNodeIfClosed(node: openNode)
+                } else {
+                    tryJoinNodes(node: openNode)
+                }
+                return
+            } else if openNode.head.content.startPoint.distance(to: node.tail.content.endPoint) < Self.snappingThreshold {
+                openNode.joinWith(tailOf: node)
+                openNodes.removeAll { $0 === node }
+                if openNode.closed {
+                    moveNodeIfClosed(node: openNode)
+                } else {
+                    tryJoinNodes(node: openNode)
+                }
+                return
+            } else if openNode.head.content.startPoint.distance(to: node.head.content.startPoint) < Self.snappingThreshold {
+                node.flip()
+                openNode.joinWith(tailOf: node)
+                openNodes.removeAll { $0 === node }
+                if openNode.closed {
+                    moveNodeIfClosed(node: openNode)
+                } else {
+                    tryJoinNodes(node: openNode)
+                }
+                return
+            } else if openNode.tail.content.endPoint.distance(to: node.tail.content.endPoint) < Self.snappingThreshold {
+                node.flip()
+                openNode.joinWith(headOf: node)
+                openNodes.removeAll { $0 === node }
+                if openNode.closed {
+                    moveNodeIfClosed(node: openNode)
+                } else {
+                    tryJoinNodes(node: openNode)
+                }
+                return
+            }
+        }
+    }
+
+    public func addLine(to point: CGPoint) {
+        guard let currentPosition else {
+            fatalError("can not end a line segment without a start")
+        }
+
+        let segment = LineSegment(startPoint: currentPosition, endPoint: point)
+        self.currentPosition = point
+        add(segment)
+    }
+
+    public func move(to point: CGPoint) {
+        self.currentPosition = point
+    }
+
+    public func beginPath() {
+        // noop
+    }
+
+    public func strokePath() {
+        // noop
+    }
+
+    public func fillPath() {
+        // noop
+    }
+
+    public func closePath() {
+        // TODO: Figure this out
+    }
+
+    public func setLineDash(phase: CGFloat, lengths: [CGFloat]) {
+        // noop
+    }
+
+    public func setStrokeColor(_ color: CGColor) {
+        // noop
+    }
+
+    public func setLineWidth(_ width: CGFloat) {
+        // noop
+    }
+
+    public func text(_ string: String, position: CGPoint, size: CGFloat) {
+        // noop
+    }
+
+    public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool) {
+        let startPoint = CGPoint(x: center.x + radius * cos(startAngle), y: center.y + radius * sin(startAngle))
+        let endPoint = CGPoint(x: center.x + radius * cos(endAngle), y: center.y + radius * sin(endAngle))
+        let arc = Arc(startAngle: startAngle,
+                      endAngle: endAngle,
+                      center: center,
+                      radius: radius,
+                      startPoint: startPoint,
+                      endPoint: endPoint,
+                      ccw: counterClockwise)
+
+        self.currentPosition = endPoint
+        add(arc)
+    }
+
+    public func addComment(_ string: String) {
+        // noop
+    }
+
+    public func circle(center: CGPoint, radius: CGFloat) {
+        self.arc(center: center, radius: radius, startAngle: 0, endAngle: .pi * 2, counterClockwise: true)
+    }
+
+    struct Arc: NodeContent {
+        var startAngle: CGFloat
+        var endAngle: CGFloat
+        var originalStartAngle: CGFloat
+        var originalEndAngle: CGFloat
+        var center: CGPoint
+        var radius: CGFloat
+        var startPoint: CGPoint
+        var endPoint: CGPoint
+        var ccw: Bool
+
+        init(startAngle: CGFloat, endAngle: CGFloat, center: CGPoint, radius: CGFloat, startPoint: CGPoint, endPoint: CGPoint, ccw: Bool) {
+            self.startAngle = startAngle
+            self.endAngle = endAngle
+            self.originalStartAngle = startAngle
+            self.originalEndAngle = endAngle
+            self.center = center
+            self.radius = radius
+            self.startPoint = startPoint
+            self.endPoint = endPoint
+            self.ccw = ccw
+        }
+
+        mutating func flip() {
+            // FIXME: ALso flip the other params
+            swap(&startPoint, &endPoint)
+            swap(&startAngle, &endAngle)
+            ccw = !ccw
+        }
+
+        func draw(in context: RenderContext) {
+            let radius = context.transform(center.vector2D.xyVector3D).distance(to: context.transform(startPoint.vector2D.xyVector3D))
+            context.renderTarget.arc(center: context.transform(center.vector2D.xyVector3D),
+                                     radius: radius,
+                                     startAngle: startAngle,
+                                     endAngle: endAngle,
+                                     counterClockwise: ccw)
+        }
+
+        var polyLineString: [String] {
+            return [
+                """
+                (\(startPoint.x.toFixed(5)), \(startPoint.y.toFixed(5)), 0, 0, \(ccw ? "" : "-") ezdxf.math.arc_to_bulge((\(center.x.toFixed(5)),\(center.y.toFixed(5))), \(originalStartAngle.toFixed(2)), \(originalEndAngle.toFixed(2)), \(radius.toFixed(5)))[-1]) 
+                """,
+                """
+                (\(endPoint.x.toFixed(5)), \(endPoint.y.toFixed(5)))
+                """,
+            ]
+        }
+    }
+
+    struct LineSegment: NodeContent {
+        var startPoint: CGPoint
+        var endPoint: CGPoint
+
+        mutating func flip() {
+            swap(&startPoint, &endPoint)
+        }
+
+        func draw(in context: RenderContext) {
+            context.renderTarget.addLine(to: context.transform(endPoint.vector2D.xyVector3D))
+        }
+
+        var polyLineString: [String] {
+            return [
+                """
+                (\(startPoint.x.toFixed(5)), \(startPoint.y.toFixed(5)))
+                """,
+                """
+                (\(endPoint.x.toFixed(5)), \(endPoint.y.toFixed(5)))
+                """,
+            ]
+        }
+    }
+
+    public protocol NodeContent {
+        var startPoint: CGPoint { get }
+        var endPoint: CGPoint { get }
+        func draw(in context: RenderContext)
+        var polyLineString: [String] { get }
+        mutating func flip()
+    }
+
+    public class Node {
+        public let id: UUID
+        public var content: NodeContent
+        public internal(set) var next: Node?
+        init(content: NodeContent) {
+            self.id = UUID()
+            self.content = content
+        }
+    }
+
+    public class NodePath: CustomDebugStringConvertible {
+        public var head: Node
+        public var tail: Node
+
+        public var closed: Bool {
+            self.head.id == self.tail.id && head.next != nil
+        }
+
+        init(node: Node) {
+            self.head = node
+            self.tail = node
+        }
+
+        public var debugDescription: String {
+            return array.map(\.id).map(\.uuidString).joined(separator: "->")
+        }
+
+        public var array: [Node] {
+            var output: [Node] = []
+            var current = head
+            while true {
+                output.append(current)
+                guard let next = current.next else {
+                    break
+                }
+                guard next !== head else {
+                    break
+                }
+                current = next
+            }
+            return output
+        }
+
+        func flip() {
+            if head === tail {
+                head.content.flip()
+                return
+            }
+            var previous: Node? = nil
+            var current = head
+            while true {
+                let next = current.next
+                current.content.flip()
+                current.next = previous
+                previous = current
+                guard let next else {
+                    break
+                }
+                if next.id == head.id {
+                    break
+                }
+                current = next
+            }
+
+            swap(&head, &tail)
+        }
+
+        func pushAtHead(_ node: Node) {
+            node.next = self.head
+            self.head = node
+
+            closeIfPossible()
+        }
+
+        func pushAtTail(_ node: Node) {
+            self.tail.next = node
+            self.tail = node
+
+            closeIfPossible()
+        }
+
+        func joinWith(headOf other: NodePath) {
+            self.tail.next = other.head
+            self.tail = other.tail
+            closeIfPossible()
+        }
+
+        func joinWith(tailOf other: NodePath) {
+            other.tail.next = self.head
+            self.head = other.head
+            closeIfPossible()
+        }
+
+        func closeIfPossible() {
+            if tail.content.endPoint.distance(to: head.content.startPoint) <= DXFLWLineRenderTarget.snappingThreshold {
+                self.tail.next = self.head
+                self.tail = self.head
+            }
+        }
+    }
+}
+
 public class DXFRenderTarget: RenderTarget {
     private var currentPath: [CGPoint] = []
     private var dxfContent = ""

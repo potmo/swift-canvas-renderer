@@ -255,9 +255,23 @@ public extension Vector2D {
     }
 }
 
+public extension Vector2D {
+    var xyVector3D: Vector {
+        return Vector(self, 0)
+    }
+}
+
 public extension CGPoint {
     var vector2D: Vector2D {
         return Vector2D(x: Double(x), y: Double(y))
+    }
+}
+
+public extension CGPoint {
+    func distance(to other: CGPoint) -> CGFloat {
+        let dx = self.x - other.x
+        let dy = self.y - other.y
+        return sqrt(dx * dx + dy * dy)
     }
 }
 
@@ -407,6 +421,12 @@ public extension Double {
         numberFormatter.decimalSeparator = "."
 
         return numberFormatter.string(from: NSNumber(value: self)) ?? "NaN"
+    }
+}
+
+extension CGFloat {
+    func toFixed(_ fractionDigits: Int) -> String {
+        Double(self).toFixed(fractionDigits)
     }
 }
 

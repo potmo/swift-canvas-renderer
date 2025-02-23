@@ -40,7 +40,7 @@ public struct CanvasColor: Equatable, Sendable {
         return CanvasColor(red: r, green: g, blue: b, alpha: a * value)
     }
 
-    var cgColor: CGColor {
+    public var cgColor: CGColor {
         CGColor(red: r, green: g, blue: b, alpha: a)
     }
 }

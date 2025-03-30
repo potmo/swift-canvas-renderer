@@ -23,10 +23,8 @@ public struct CanvasView<StateType: ObservableObject>: View {
     }
 }
 
-
 public protocol ShapeMaker<StateType> {
     associatedtype StateType: ObservableObject
     @CanvasBuilder
     func shapes(from state: StateType) -> [any DrawableShape]
 }
-

@@ -42,6 +42,7 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
             drawWithArc(in: context)
         } else {
           //  fatalError("This should not happen")
+            print("warning drawing with points")
             drawWithPoints(in: context)
         }
     }

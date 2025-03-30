@@ -246,6 +246,7 @@ public class DXFLWLineRenderTarget: RenderTarget {
     private var currentPosition: CGPoint? = nil
     public private(set) var openNodes: [NodePath] = []
     public private(set) var closedNodes: [NodePath] = []
+    public private(set) var immutableOpenNodes: [NodePath] = []
 
     public init() {
     }
@@ -255,11 +256,17 @@ public class DXFLWLineRenderTarget: RenderTarget {
         let header: String
         let dxfOutput: String
 
-        let allNodes = openNodes + closedNodes
-        let dxfContent = allNodes.map { node in
+        let dxfClosedContent = closedNodes.map { node in
             let points = node.array.flatMap(\.content.polyLineString).joined(separator: ", ")
-            return "msp.add_lwpolyline([\(points)])"
+            return "msp.add_lwpolyline([\(points)], close=True)"
         }.joined(separator: "\n")
+
+        let dxfOpenContent = (openNodes + immutableOpenNodes).map { node in
+            let points = node.array.flatMap(\.content.polyLineString).joined(separator: ", ")
+            return "msp.add_lwpolyline([\(points)], close=False)"
+        }.joined(separator: "\n")
+
+        let dxfContent = dxfClosedContent + "\n" + dxfOpenContent
 
         if includeHeader {
             header = """
@@ -322,12 +329,26 @@ public class DXFLWLineRenderTarget: RenderTarget {
         """
     }
 
-    private func add(_ nodeContent: NodeContent) {
+    private func addOpen(_ nodeContent: NodeContent) {
         let node = Node(content: nodeContent)
 
         let nodePath = NodePath(node: node)
         openNodes.append(nodePath)
         tryJoinNodes(node: nodePath)
+    }
+
+    private func addClosed(_ nodeContent: NodeContent) {
+        var node = Node(content: nodeContent)
+        node.next = node
+
+        let nodePath = NodePath(node: node)
+
+        closedNodes.append(nodePath)
+    }
+
+    public func makeCurrentOpenNodesImmutable() {
+        immutableOpenNodes.append(contentsOf: openNodes)
+        openNodes = []
     }
 
     private func moveNodeIfClosed(node: NodePath) {
@@ -389,7 +410,7 @@ public class DXFLWLineRenderTarget: RenderTarget {
 
         let segment = LineSegment(startPoint: currentPosition, endPoint: point)
         self.currentPosition = point
-        add(segment)
+        addOpen(segment)
     }
 
     public func move(to point: CGPoint) {
@@ -440,7 +461,7 @@ public class DXFLWLineRenderTarget: RenderTarget {
                       ccw: counterClockwise)
 
         self.currentPosition = endPoint
-        add(arc)
+        addOpen(arc)
     }
 
     public func addComment(_ string: String) {
@@ -448,7 +469,44 @@ public class DXFLWLineRenderTarget: RenderTarget {
     }
 
     public func circle(center: CGPoint, radius: CGFloat) {
-        self.arc(center: center, radius: radius, startAngle: 0, endAngle: .pi * 2, counterClockwise: true)
+        let counterClockwise = true
+
+        var startAngle = 0.0
+        var endAngle = 1.0 * .pi
+        var startPoint = CGPoint(x: center.x + radius * cos(startAngle), y: center.y + radius * sin(startAngle))
+        var endPoint = CGPoint(x: center.x + radius * cos(endAngle), y: center.y + radius * sin(endAngle))
+
+        let arc0 = Arc(startAngle: startAngle,
+                       endAngle: endAngle,
+                       center: center,
+                       radius: radius,
+                       startPoint: startPoint,
+                       endPoint: endPoint,
+                       ccw: counterClockwise)
+
+        startAngle = 1.0 * .pi
+        endAngle = 0.0
+
+        startPoint = CGPoint(x: center.x + radius * cos(startAngle), y: center.y + radius * sin(startAngle))
+        endPoint = CGPoint(x: center.x + radius * cos(endAngle), y: center.y + radius * sin(endAngle))
+
+        let arc1 = Arc(startAngle: startAngle,
+                       endAngle: endAngle,
+                       center: center,
+                       radius: radius,
+                       startPoint: startPoint,
+                       endPoint: endPoint,
+                       ccw: counterClockwise)
+
+        self.currentPosition = endPoint
+
+        // shortcut adding nodes and just add the two halfs to the closed nodes
+        let node0 = Node(content: arc0)
+        let node1 = Node(content: arc1)
+
+        let nodePath = NodePath(node: node0)
+        nodePath.joinWith(headOf: NodePath(node: node1))
+        closedNodes.append(nodePath)
     }
 
     struct Arc: NodeContent {

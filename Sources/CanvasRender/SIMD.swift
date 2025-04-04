@@ -234,6 +234,12 @@ public extension Vector {
 }
 
 public extension Vector {
+    func distance(to other: Vector) -> Double {
+        return simd_distance(self, other)
+    }
+}
+
+public extension Vector {
     var arbitraryOrthogonal: Vector {
         let majorX = (self.x < self.y) && (self.x < self.z) ? 1.0 : 0.0
         let majorY = (self.y <= self.x) && (self.y < self.z) ? 1.0 : 0.0

@@ -70,11 +70,6 @@ class GraphicsContextRenderTarget: RenderTarget {
     }
 
     func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool) {
-        let startPos = CGPoint(x: center.x + cos(startAngle) * radius,
-                               y: center.y + sin(startAngle) * radius)
-
-        self.move(to: startPos)
-
         var path = self.currentPath ?? SwiftUI.Path()
 
         path.addArc(center: center,
@@ -174,23 +169,12 @@ class CGContextRenderTarget: RenderTarget {
     }
 
     public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool = true) {
-        // swap the direction of rotation since the CGtransform has screwed things up it makes the cos/sin angle go counter clockwise
-        // this makes it go clockwise
-        // let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
-        // let fixedEndAngle = startAngle - delta
-
-        // mark start
-
-        let startPos = CGPoint(x: center.x + cos(startAngle) * radius,
-                               y: center.y + sin(startAngle) * radius)
-
-        cgContext.move(to: startPos)
-
         cgContext.addArc(center: center,
                          radius: radius,
                          startAngle: startAngle,
                          endAngle: endAngle,
                          clockwise: !counterClockwise)
+
     }
 
     public func fillPath() {
@@ -943,12 +927,51 @@ public class SVGRenderTarget: RenderTarget {
     }
 
     public func arc(center: CGPoint, radius: CGFloat, startAngle: CGFloat, endAngle: CGFloat, counterClockwise: Bool = true) {
-        // https://www.nan.fyi/svg-paths/arcs
-        // TODO: Fix this
+        let startX = center.x + cos(startAngle) * radius
+        let startY = center.y + sin(startAngle) * radius
+        let endX = center.x + cos(endAngle) * radius
+        let endY = center.y + sin(endAngle) * radius
+
+        // If the path has no commands yet, add a move to the arc's start
+        // (matches CGContext behavior which auto-starts a subpath)
+        if let currentPath, currentPath.isEmpty {
+            self.currentPath?.append(.move(x: startX, y: -startY))
+        }
+
+        var angleDelta = counterClockwise ? (endAngle - startAngle) : (startAngle - endAngle)
+        angleDelta = angleDelta.truncatingRemainder(dividingBy: 2 * .pi)
+        if angleDelta < 0 { angleDelta += 2 * .pi }
+        if angleDelta < 0.0001 && startAngle != endAngle { angleDelta = 2 * .pi }
+
+        let sweepFlag = counterClockwise ? 0 : 1
+
+        // Split arcs larger than π into two halves. This avoids SVG issues
+        // where large arcs at small radii round start/end to the same point
+        // (making the A command degenerate), and also handles full circles.
+        if angleDelta > .pi {
+            let halfDelta = angleDelta / 2
+            let midAngle = counterClockwise ? (startAngle + halfDelta) : (startAngle - halfDelta)
+            let midX = center.x + cos(midAngle) * radius
+            let midY = center.y + sin(midAngle) * radius
+            currentPath?.append(.arc(rx: radius, ry: radius, endX: midX, endY: -midY, largeArcFlag: 0, sweepFlag: sweepFlag))
+            currentPath?.append(.arc(rx: radius, ry: radius, endX: endX, endY: -endY, largeArcFlag: 0, sweepFlag: sweepFlag))
+        } else {
+            currentPath?.append(.arc(rx: radius, ry: radius, endX: endX, endY: -endY, largeArcFlag: 0, sweepFlag: sweepFlag))
+        }
     }
 
     public func circle(center: CGPoint, radius: CGFloat) {
-        // TODO: fix this
+        let fmt = SVGCommand.numberFormatter
+        let cx = fmt.string(from: center.x as NSNumber)!
+        let cy = fmt.string(from: (-center.y) as NSNumber)!
+        let r = fmt.string(from: radius as NSNumber)!
+        let dashAttr: String
+        if let currentStrokeDash {
+            dashAttr = " stroke-dasharray=\"\(currentStrokeDash)\""
+        } else {
+            dashAttr = ""
+        }
+        svgContent += "<circle cx=\"\(cx)\" cy=\"\(cy)\" r=\"\(r)\" stroke=\"\(currentColor)\" stroke-width=\"\(currentStrokeWidth)\"\(dashAttr) fill=\"none\" />\n"
     }
 
     public func move(to point: CGPoint) {
@@ -1013,7 +1036,7 @@ public class SVGRenderTarget: RenderTarget {
     }
 
     public func addComment(_ string: String) {
-        svgContent += "\n//\(string)"
+        svgContent += "\n//\(string)\n"
     }
 
     public var svg: String {
@@ -1040,14 +1063,18 @@ public class SVGRenderTarget: RenderTarget {
 
         case move(x: Double, y: Double)
         case line(x: Double, y: Double)
+        case arc(rx: Double, ry: Double, endX: Double, endY: Double, largeArcFlag: Int, sweepFlag: Int)
         case closePath
 
         var string: String {
+            let fmt = Self.numberFormatter
             switch self {
             case let .move(x, y):
-                return "M\(Self.numberFormatter.string(from: x as! NSNumber)!) \(Self.numberFormatter.string(from: y as! NSNumber)!)"
+                return "M\(fmt.string(from: x as NSNumber)!) \(fmt.string(from: y as NSNumber)!)"
             case let .line(x, y):
-                return "L\(Self.numberFormatter.string(from: x as! NSNumber)!) \(Self.numberFormatter.string(from: y as! NSNumber)!)"
+                return "L\(fmt.string(from: x as NSNumber)!) \(fmt.string(from: y as NSNumber)!)"
+            case let .arc(rx, ry, endX, endY, largeArcFlag, sweepFlag):
+                return "A\(fmt.string(from: rx as NSNumber)!) \(fmt.string(from: ry as NSNumber)!) 0 \(largeArcFlag) \(sweepFlag) \(fmt.string(from: endX as NSNumber)!) \(fmt.string(from: endY as NSNumber)!)"
             case .closePath:
                 return "Z"
             }

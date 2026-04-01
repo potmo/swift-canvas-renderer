@@ -35,6 +35,7 @@ public struct PathNumber: DrawableShape {
             path.draw(in: context)
         }
     }
+    
 
     private static func space(_ topCorner: Vector, _ right: Vector, _ down: Vector, _ scale: Double) -> Path {
         return Path(closed: false) {

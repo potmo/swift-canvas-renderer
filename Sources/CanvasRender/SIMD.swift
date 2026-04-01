@@ -93,6 +93,11 @@ public extension Vector {
         return quat.act(self)
     }
 
+    func rotated(by angle: Double, around axis: Vector) -> Vector {
+        let quat = Quat(angle: angle, axis: axis)
+        return quat.act(self)
+    }
+
     func rotated(by angle: Double, around axis: Axis, pivot: Vector) -> Vector {
         let quat = Quat(angle: angle, axis: axis.vector)
         return quat.act(self - pivot) + pivot

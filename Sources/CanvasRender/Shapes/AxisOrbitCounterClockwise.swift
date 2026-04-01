@@ -55,12 +55,15 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
         let transformedPoint = context.transform(point)
         let transformedLever = Vector(transformedPoint.x, transformedPoint.y, 0) - Vector(transformedPivot.x, transformedPivot.y, 0)
         let transformedRadius = transformedLever.length
-        let transformedStartPoint = context.transform(point)
-        let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
 
         var startAngle: Double
         var endAngle: Double
         let newAxis = findNewAxis(in: context)
+
+        if radius == 0 {
+            context.renderTarget.move(to: transformedPivot)
+            return
+        }
 
         if newAxis.z * axis.z < 0 {
             startAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
@@ -70,20 +73,16 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
             startAngle = endAngle + angle
         }
 
-        context.renderTarget.move(to: transformedStartPoint)
-
         if abs(angle) == .pi * 2 {
             context.renderTarget.circle(center: transformedPivot,
                                         radius: transformedRadius)
         } else {
             context.renderTarget.arc(center: transformedPivot,
                                      radius: transformedRadius,
-                                     startAngle: endAngle,
-                                     endAngle: startAngle,
-                                     counterClockwise: true)
+                                     startAngle: startAngle,
+                                     endAngle: endAngle,
+                                     counterClockwise: false)
         }
-
-        context.renderTarget.move(to: transformedEndPoint)
     }
 
     private func findNewAxis(in context: RenderContext) -> Vector {

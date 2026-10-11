@@ -440,19 +440,6 @@ extension CGFloat {
     }
 }
 
-extension CGPoint {
-    var formatted: (x: String, y: String) {
-        let x = self.x.formatted
-        let y = self.y.formatted
-        return (x: x, y: y)
-    }
-}
-
-extension CGFloat {
-    var formatted: String {
-        DecimalFormatting.decimal(self)
-    }
-}
 
 extension Double {
     func wrapMax(_ max: Double) -> Double {

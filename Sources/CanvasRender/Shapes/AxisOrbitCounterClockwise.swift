@@ -22,80 +22,38 @@ public struct AxisOrbitCounterClockwise: DrawableShape, PartOfPath {
 
     public func draw(in context: RenderContext) {
         context.renderTarget.beginPath(id: nil)
+        context.renderTarget.move(to: context.transform(point))
         drawPartOfPath(in: context)
         context.renderTarget.strokePath()
     }
 
     public func drawPartOfPath(in context: RenderContext) {
-        let lower = context.transform(Vector(0, 0, 0))
-        let upper = context.transform(Vector(0, 0, 1))
-        let lowerVector = Vector2D(x: lower.x, y: lower.y)
-        let upperVector = Vector2D(x: upper.x, y: upper.y)
-        let distance = simd_precise_distance(lowerVector, upperVector)
-
-        let axisIsAlignedWithCameraAxis = distance <= 0.000001
-
-        let axisIsAlignedWithZ = abs(axis.dot(Vector(0, 0, 1))) >= 0.9999999
-
-        // make a special case for when the rotation axis is aligned with z and the camera axis is aligned with z as well
-        if axisIsAlignedWithCameraAxis, axisIsAlignedWithZ {
-            drawWithArc(in: context)
-        } else {
-          //  fatalError("This should not happen")
-            print("warning drawing with points")
+        switch ProjectedArc(pivot: pivot, point: point, angle: angle, axis: axis, in: context) {
+        case let .circular(center, radius, startAngle, sweep):
+            if abs(angle) >= .pi * 2 - 1e-12 {
+                context.renderTarget.circle(center: center, radius: radius)
+            } else {
+                context.renderTarget.arc(center: center,
+                                         radius: radius,
+                                         startAngle: startAngle,
+                                         endAngle: startAngle + sweep,
+                                         counterClockwise: sweep > 0)
+            }
+        case let .point(point):
+            context.renderTarget.addLine(to: point)
+        case .other:
+            // an ellipse or perspective on the canvas
             drawWithPoints(in: context)
         }
     }
 
-    private func drawWithArc(in context: RenderContext) {
-        let lever = point - pivot
-
-        // transform the positions to capture the camera transform without doing the matrix math
-        let transformedPivot = context.transform(pivot)
-        let transformedPoint = context.transform(point)
-        let transformedLever = Vector(transformedPoint.x, transformedPoint.y, 0) - Vector(transformedPivot.x, transformedPivot.y, 0)
-        let transformedRadius = transformedLever.length
-
-        var startAngle: Double
-        var endAngle: Double
-        let newAxis = findNewAxis(in: context)
-
-        if radius == 0 {
-            context.renderTarget.move(to: transformedPivot)
+    private func drawWithPoints(in context: RenderContext) {
+        // continue the path, like an arc does
+        context.renderTarget.addLine(to: context.transform(point))
+        guard radius > 0 else {
             return
         }
-
-        if newAxis.z * axis.z < 0 {
-            startAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
-            endAngle = startAngle - angle
-        } else {
-            endAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
-            startAngle = endAngle + angle
-        }
-
-        if abs(angle) == .pi * 2 {
-            context.renderTarget.circle(center: transformedPivot,
-                                        radius: transformedRadius)
-        } else {
-            context.renderTarget.arc(center: transformedPivot,
-                                     radius: transformedRadius,
-                                     startAngle: startAngle,
-                                     endAngle: endAngle,
-                                     counterClockwise: false)
-        }
-    }
-
-    private func findNewAxis(in context: RenderContext) -> Vector {
-        // We know that the axis is aligned with the z axis or the inverted z axis but offsets of flips might have occured so we need to compute the actual axis. Then we can get the cross product to figure out the new axis and see if it is flipped
-        let northArrowTransformed = context.transform(Vector(0, 1, 0)).vector2D - context.transform(Vector(0, 0, 0)).vector2D
-        let eastArrowTransformed = context.transform(Vector(1, 0, 0)).vector2D - context.transform(Vector(0, 0, 0)).vector2D
-        return Vector(eastArrowTransformed.x, eastArrowTransformed.y, 0).normalized
-            .cross(Vector(northArrowTransformed.x, northArrowTransformed.y, 0).normalized)
-    }
-
-    private func drawWithPoints(in context: RenderContext) {
         let lever = (point - pivot).normalized.scaled(by: radius)
-        context.renderTarget.move(to: context.transform(point))
 
         let arcLength = abs(angle) * radius
 

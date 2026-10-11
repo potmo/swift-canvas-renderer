@@ -27,64 +27,23 @@ public struct Arc: DrawableShape, PartOfPath {
     }
 
     public func drawPartOfPath(in context: RenderContext) {
-        let axisIsAlignedWithCameraAxis = context.transform(Vector(0, 0, 0)) == context.transform(Vector(0, 0, 1))
-        let axisIsAlignedWithZ = abs(axis.dot(Vector(0, 0, 1))) >= 1.0 - .ulpOfOne
-
-        // make a special case for when the rotation axis is aligned with z and the camera axis is aligned with z as well
-        if axisIsAlignedWithCameraAxis, axisIsAlignedWithZ {
-            drawWithArc(in: context)
-        } else {
+        switch ProjectedArc(pivot: pivot, point: point, angle: angle, axis: axis, in: context) {
+        case let .circular(center, radius, startAngle, sweep):
+            // make sure the we draw a line to the start position first and end up at the end position
+            context.renderTarget.move(to: context.transform(point))
+            if abs(angle) >= .pi * 2 - 1e-12 {
+                context.renderTarget.circle(center: center, radius: radius)
+            } else {
+                context.renderTarget.arc(center: center,
+                                         radius: radius,
+                                         startAngle: startAngle,
+                                         endAngle: startAngle + sweep,
+                                         counterClockwise: sweep > 0)
+            }
+            context.renderTarget.move(to: context.transform(pivot + Quat(angle: angle, axis: axis).act(point - pivot)))
+        case .point, .other:
             drawWithPoints(in: context)
         }
-    }
-
-    private func drawWithArc(in context: RenderContext) {
-        let lever = point - pivot
-
-        // transform the positions to capture the camera transform without doing the matrix math
-        let transformedPivot = context.transform(pivot)
-        let transformedPoint = context.transform(point)
-
-        let transformedLever = Vector(transformedPoint.x, transformedPoint.y, 0) - Vector(transformedPivot.x, transformedPivot.y, 0)
-        let transformedRadius = transformedLever.length
-
-        let startAngle = Vector(1, 0, 0).angleBetween(and: transformedLever, around: Vector(0, 0, 1))
-        let endAngle = startAngle + angle
-
-        // if the rotation axis is upside down then we have to flip things
-        let fixedEndAngle: Double
-        let fixedStartAngle: Double
-
-        let clockwise: Bool
-
-        if axis.dot(Vector(0, 0, 1)) < 0 {
-            // rotating by angle around Z- is rotating by -angle around Z+
-            fixedStartAngle = startAngle
-            fixedEndAngle = startAngle - angle
-            clockwise = angle >= 0
-        } else {
-            fixedStartAngle = startAngle
-            fixedEndAngle = endAngle
-            clockwise = angle <= 0
-        }
-
-        // make sure the we draw a line to the start position first and end up at the end position
-        let transformedStartPoint = context.transform(point)
-        let transformedEndPoint = context.transform(pivot + Quat(angle: angle, axis: axis).act(lever))
-        context.renderTarget.move(to: transformedStartPoint)
-
-        if angle == .pi * 2 {
-            context.renderTarget.circle(center: transformedPivot,
-                                        radius: transformedRadius)
-        } else {
-            context.renderTarget.arc(center: transformedPivot,
-                                     radius: transformedRadius,
-                                     startAngle: fixedStartAngle,
-                                     endAngle: fixedEndAngle,
-                                     counterClockwise: !clockwise)
-        }
-
-        context.renderTarget.move(to: transformedEndPoint)
     }
 
     private func drawWithPoints(in context: RenderContext) {

@@ -53,8 +53,25 @@ enum DecimalFormatting {
         fixedFormatter(fractionDigits: fractionDigits).string(from: NSNumber(value: value)) ?? "NaN"
     }
 
-    /// 1...8 fraction digits, always with a decimal point (SVG path data and the legacy DXF script).
+    /// 1...8 fraction digits, always with a decimal point (SVG path data).
     static func decimal(_ value: Double) -> String {
         decimalFormatter.string(from: NSNumber(value: value))!
+    }
+
+    // Fixed point with up to 10 fraction digits and no exponent, for DXF group values.
+    private static let dxfFormatter: NumberFormatter = {
+        let formatter = makeFormatter()
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.alwaysShowsDecimalSeparator = true
+        formatter.hasThousandSeparators = false
+        formatter.maximumFractionDigits = 10
+        formatter.minimumFractionDigits = 1
+        return formatter
+    }()
+
+    /// 1...10 fraction digits, always with a decimal point, never an exponent (DXF group values).
+    static func dxf(_ value: Double) -> String {
+        dxfFormatter.string(from: NSNumber(value: value))!
     }
 }

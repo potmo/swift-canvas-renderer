@@ -6,11 +6,13 @@ public struct CanvasView<StateType: ObservableObject>: View {
     private let maker: any ShapeMaker<StateType>
     @ObservedObject private var state: StateType
     private let renderTransform: RenderTransformer
+    private let navigator: CanvasNavigator?
 
-    public init(@ObservedObject state: StateType, maker: any ShapeMaker<StateType>, renderTransform: RenderTransformer) {
+    public init(state: StateType, maker: any ShapeMaker<StateType>, renderTransform: RenderTransformer, navigator: CanvasNavigator? = nil) {
         self.maker = maker
-        self.state = state
+        self._state = ObservedObject(wrappedValue: state)
         self.renderTransform = renderTransform
+        self.navigator = navigator
     }
 
     public var body: some View {
@@ -18,7 +20,8 @@ public struct CanvasView<StateType: ObservableObject>: View {
             CanvasRenderer(state: state,
                            maker: maker,
                            renderTransform: renderTransform,
-                           canvasSize: Vector2D(x: proxy.size.width, y: proxy.size.height))
+                           canvasSize: Vector2D(x: proxy.size.width, y: proxy.size.height),
+                           navigator: navigator)
         }
     }
 }

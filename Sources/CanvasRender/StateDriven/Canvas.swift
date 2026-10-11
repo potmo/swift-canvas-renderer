@@ -2,7 +2,7 @@ import Cocoa
 import simd
 import SwiftUI
 
-class Canvas<StateType: ObservableObject>: NSView {
+class Canvas<StateType: ObservableObject>: NSView, CanvasNavigable {
     private var trackingArea: NSTrackingArea?
 
     private var zoomTransform: CGAffineTransform {
@@ -40,9 +40,9 @@ class Canvas<StateType: ObservableObject>: NSView {
         }
     }
 
-    private let maker: any ShapeMaker<StateType>
-    private let state: StateType
-    private let renderTransform: RenderTransformer
+    var maker: any ShapeMaker<StateType>
+    var state: StateType
+    var renderTransform: RenderTransformer
     private let canvasSize: Vector2D
 
     init(state: StateType,
@@ -116,6 +116,31 @@ class Canvas<StateType: ObservableObject>: NSView {
         cgContext.addLine(to: CGPoint(x: 0, y: frame.size.height))
         cgContext.closePath()
         cgContext.strokePath()
+    }
+
+    func frameAll() {
+        let boundsTarget = BoundsRenderTarget()
+        let context = RenderContext(canvasSize: Vector2D(frame.size.width, frame.size.height),
+                                    renderTarget: boundsTarget,
+                                    transform2d: .identity,
+                                    transform3d: renderTransform)
+        maker.shapes(from: state).forEach { $0.draw(in: context) }
+
+        let content = boundsTarget.bounds
+        guard !content.isNull, content.width > 0 || content.height > 0 else {
+            return
+        }
+
+        let margin = 20.0
+        let available = CGSize(width: max(1, frame.size.width - margin * 2),
+                               height: max(1, frame.size.height - margin * 2))
+        let scaleX = content.width > 0 ? available.width / content.width : .infinity
+        let scaleY = content.height > 0 ? available.height / content.height : .infinity
+        zoom = min(scaleX, scaleY)
+        translation = [frame.size.width / 2 - content.midX * zoom,
+                       frame.size.height / 2 - content.midY * zoom]
+
+        setNeedsDisplay(self.bounds)
     }
 
     func drawText(context: CGContext, text: String, position: CGPoint) {
@@ -211,20 +236,20 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         mousePos = local
         setNeedsDisplay(self.bounds)
     }
 
     override func mouseExited(with event: NSEvent) {
-        //        let local = self.convert(event.locationInWindow, to: self)
+        //        let local = self.convert(event.locationInWindow, from: nil)
         //        print("mouse exited \(local.x) \(local.y)")
         mousePos = nil
         setNeedsDisplay(self.bounds)
     }
 
     override func mouseMoved(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         mousePos = local
         setNeedsDisplay(self.bounds)
 
@@ -281,40 +306,24 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         self.mousePos = local
         setNeedsDisplay(self.bounds)
     }
 
     override func mouseUp(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         self.mousePos = local
     }
 
     override func magnify(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
-        let localInUnZoomedSpace = local.applying(zoomTransform.concatenating(translateTransform).inverted())
-
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         let zoomFactor = 1 / (1 - event.magnification)
-
-        self.zoom = zoom * zoomFactor
-
-        let newTransform = CGAffineTransform(scaleX: zoom, y: zoom)
-            .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
-            .scaledBy(x: zoomFactor, y: zoomFactor)
-            .translatedBy(x: -localInUnZoomedSpace.x, y: -localInUnZoomedSpace.y)
-
-        // put the transform part in the translation
-        translation += [newTransform.tx, newTransform.ty]
-
-        // put the scale part in zoom
-        zoom = sqrt(Double(newTransform.a * newTransform.a + newTransform.c * newTransform.c))
-
-        setNeedsDisplay(self.bounds)
+        zoom(by: zoomFactor, around: local)
     }
 
     override func rightMouseDragged(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         self.mousePos = local
 
         let delta = CGPoint(x: event.deltaX, y: event.deltaY)
@@ -329,7 +338,7 @@ class Canvas<StateType: ObservableObject>: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        let local = self.convert(event.locationInWindow, to: self).applying(flipVerticalTransform)
+        let local = self.convert(event.locationInWindow, from: nil).applying(flipVerticalTransform)
         self.mousePos = local
 
         let delta = CGPoint(x: event.deltaX, y: event.deltaY)
@@ -353,25 +362,16 @@ class Canvas<StateType: ObservableObject>: NSView {
             return
         }
 
-        let local = self.convert(mousePos, to: self).applying(flipVerticalTransform)
-        let localInUnZoomedSpace = local.applying(zoomTransform.concatenating(translateTransform).inverted())
-
         let scrollValue = min(2.0, max(-2.0, event.scrollingDeltaY)) * 0.1
         let zoomFactor = 1 / (1 - scrollValue)
+        zoom(by: zoomFactor, around: mousePos)
+    }
 
-        self.zoom = zoom * zoomFactor
-
-        let newTransform = CGAffineTransform(scaleX: zoom, y: zoom)
-            .translatedBy(x: localInUnZoomedSpace.x, y: localInUnZoomedSpace.y)
-            .scaledBy(x: zoomFactor, y: zoomFactor)
-            .translatedBy(x: -localInUnZoomedSpace.x, y: -localInUnZoomedSpace.y)
-
-        // put the transform part in the translation
-        translation += [newTransform.tx, newTransform.ty]
-
-        // put the scale part in zoom
-        zoom = sqrt(Double(newTransform.a * newTransform.a + newTransform.c * newTransform.c))
-
+    /// Zooms by `factor` while keeping the content under `point` (in view space) fixed.
+    private func zoom(by factor: Double, around point: CGPoint) {
+        let pivot = simd_double2(point.x, point.y)
+        translation = pivot + (translation - pivot) * factor
+        zoom *= factor
         setNeedsDisplay(self.bounds)
     }
 }

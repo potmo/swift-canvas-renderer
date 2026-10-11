@@ -42,6 +42,8 @@ class RealtimeCanvas: NSView {
     private let maker: any RealtimeShapeMaker
     private let renderTransform: RenderTransformer
     private let canvasSize: Vector2D
+    /// Redraws once per display refresh while the view is in a window.
+    private var displayLink: CADisplayLink?
 
     init(maker: any RealtimeShapeMaker,
          renderTransform: RenderTransformer,
@@ -62,6 +64,21 @@ class RealtimeCanvas: NSView {
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        displayLink?.invalidate()
+        displayLink = nil
+        if window != nil {
+            let displayLink = self.displayLink(target: self, selector: #selector(displayLinkFired))
+            displayLink.add(to: .main, forMode: .common)
+            self.displayLink = displayLink
+        }
+    }
+
+    @objc private func displayLinkFired(_ displayLink: CADisplayLink) {
+        needsDisplay = true
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -121,10 +138,6 @@ class RealtimeCanvas: NSView {
         cgContext.addLine(to: CGPoint(x: 0, y: frame.size.height))
         cgContext.closePath()
         cgContext.strokePath()
-
-        DispatchQueue.main.async {
-            self.needsDisplay = true
-        }
     }
 
     func drawText(context: CGContext, text: String, position: CGPoint) {

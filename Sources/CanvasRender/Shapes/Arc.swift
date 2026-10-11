@@ -21,7 +21,7 @@ public struct Arc: DrawableShape, PartOfPath {
     }
 
     public func draw(in context: RenderContext) {
-        context.renderTarget.beginPath()
+        context.renderTarget.beginPath(id: nil)
         drawPartOfPath(in: context)
         context.renderTarget.strokePath()
     }
@@ -58,9 +58,9 @@ public struct Arc: DrawableShape, PartOfPath {
         let clockwise: Bool
 
         if axis.dot(Vector(0, 0, 1)) < 0 {
-            let delta = atan2(sin(endAngle - startAngle), cos(endAngle - startAngle))
-            fixedStartAngle = startAngle - delta
-            fixedEndAngle = startAngle
+            // rotating by angle around Z- is rotating by -angle around Z+
+            fixedStartAngle = startAngle
+            fixedEndAngle = startAngle - angle
             clockwise = angle >= 0
         } else {
             fixedStartAngle = startAngle

@@ -7,11 +7,13 @@ public struct Path: DrawableShape, PartOfPath {
     private let builder: () -> [any PartOfPath]
     private let closed: Bool
     private let filled: Bool
+    private let id: String?
 
-    public init(closed: Bool = false, filled: Bool = false, @PathBuilder _ builder: @escaping () -> [any PartOfPath]) {
+    public init(closed: Bool = false, filled: Bool = false, id: String? = nil, @PathBuilder _ builder: @escaping () -> [any PartOfPath]) {
         self.builder = builder
         self.closed = closed
         self.filled = filled
+        self.id = id
     }
 
     public init(closed: Bool = false, points: [Vector], filled: Bool = false) {
@@ -37,7 +39,7 @@ public struct Path: DrawableShape, PartOfPath {
     }
 
     public func draw(in context: RenderContext) {
-        context.renderTarget.beginPath()
+        context.renderTarget.beginPath(id: id)
         self.drawPartOfPath(in: context)
         if filled {
             context.renderTarget.fillPath()

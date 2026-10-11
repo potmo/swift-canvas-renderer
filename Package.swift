@@ -18,5 +18,7 @@ let package = Package(name: "swift-canvas-renderer",
                                             dependencies: [.target(name: "CanvasRender")]),
                           .target(name: "CanvasRender",
                                   dependencies: []),
+                          .testTarget(name: "CanvasRenderTests",
+                                      dependencies: [.target(name: "CanvasRender")]),
 
                       ])

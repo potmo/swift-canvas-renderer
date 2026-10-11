@@ -22,7 +22,7 @@ public struct LineSection: DrawableShape, PartOfPath {
     }
 
     public func draw(in context: RenderContext) {
-        context.renderTarget.beginPath()
+        context.renderTarget.beginPath(id: nil)
         drawPartOfPath(in: context)
         context.renderTarget.strokePath()
     }

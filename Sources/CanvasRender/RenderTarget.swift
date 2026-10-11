@@ -6,7 +6,7 @@ import SwiftUI
 public protocol RenderTarget {
     func addLine(to point: CGPoint)
     func move(to point: CGPoint)
-    func beginPath()
+    func beginPath(id: String?)
     func strokePath()
     func fillPath()
     func closePath()
@@ -19,10 +19,17 @@ public protocol RenderTarget {
     func circle(center: CGPoint, radius: CGFloat)
 }
 
+public extension RenderTarget {
+    func beginPath() {
+        beginPath(id: nil)
+    }
+}
+
 class GraphicsContextRenderTarget: RenderTarget {
     private let context: GraphicsContext
 
     private var currentPath: SwiftUI.Path?
+    private var currentPathId: String?
     private var currentStrokeColor: Color = .black
     private var currentStrokeStyle = StrokeStyle(lineWidth: 1, lineCap: .round, lineJoin: .round)
 
@@ -30,8 +37,9 @@ class GraphicsContextRenderTarget: RenderTarget {
         self.context = context
     }
 
-    func beginPath() {
+    func beginPath(id: String?) {
         self.currentPath = SwiftUI.Path()
+        self.currentPathId = id
     }
 
     func strokePath() {
@@ -144,7 +152,7 @@ class CGContextRenderTarget: RenderTarget {
         cgContext.move(to: point)
     }
 
-    func beginPath() {
+    func beginPath(id: String?) {
         cgContext.beginPath()
     }
 
@@ -401,7 +409,7 @@ public class DXFLWLineRenderTarget: RenderTarget {
         self.currentPosition = point
     }
 
-    public func beginPath() {
+    public func beginPath(id: String?) {
         // noop
     }
 
@@ -785,7 +793,7 @@ public class DXFRenderTarget: RenderTarget {
         dxfContent += "\n#\(string)"
     }
 
-    public func beginPath() {
+    public func beginPath(id: String?) {
         currentPath = []
     }
 
@@ -906,6 +914,7 @@ public class DXFRenderTarget: RenderTarget {
 
 public class SVGRenderTarget: RenderTarget {
     private var currentPath: [SVGCommand]?
+    private var currentPathId: String?
     private var svgContent = ""
     private var currentColor = "#000000"
     private var currentStrokeDash: String?
@@ -916,6 +925,7 @@ public class SVGRenderTarget: RenderTarget {
 
     public init() {
         self.currentPath = nil
+        self.currentPathId = nil
     }
 
     public func closePath() {
@@ -961,10 +971,9 @@ public class SVGRenderTarget: RenderTarget {
     }
 
     public func circle(center: CGPoint, radius: CGFloat) {
-        let fmt = SVGCommand.numberFormatter
-        let cx = fmt.string(from: center.x as NSNumber)!
-        let cy = fmt.string(from: (-center.y) as NSNumber)!
-        let r = fmt.string(from: radius as NSNumber)!
+        let cx = DecimalFormatting.decimal(center.x)
+        let cy = DecimalFormatting.decimal(-center.y)
+        let r = DecimalFormatting.decimal(radius)
         let dashAttr: String
         if let currentStrokeDash {
             dashAttr = " stroke-dasharray=\"\(currentStrokeDash)\""
@@ -982,8 +991,9 @@ public class SVGRenderTarget: RenderTarget {
         currentPath?.append(.line(x: point.x, y: -point.y))
     }
 
-    public func beginPath() {
+    public func beginPath(id: String?) {
         currentPath = []
+        currentPathId = id
     }
 
     public func setLineDash(phase: CGFloat, lengths: [CGFloat]) {
@@ -1023,7 +1033,15 @@ public class SVGRenderTarget: RenderTarget {
             dash = ""
         }
         let strokeWidth = "stroke-width=\"\(currentStrokeWidth)\""
-        svgContent += "<path d=\"\(content)\" \(color) \(dash) fill=\"none\" />\n"
+
+        let svgId:String
+        if let currentPathId {
+            svgId = "id=\"\(currentPathId)\""
+        } else {
+            svgId = " "
+        }
+
+        svgContent += "<path \(svgId) d=\"\(content)\" \(color) \(dash) fill=\"none\" />\n"
     }
 
     public func fillPath() {
@@ -1049,32 +1067,20 @@ public class SVGRenderTarget: RenderTarget {
     }
 
     enum SVGCommand {
-        static var numberFormatter: NumberFormatter {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.usesGroupingSeparator = false
-            formatter.decimalSeparator = "."
-            formatter.alwaysShowsDecimalSeparator = true
-            formatter.hasThousandSeparators = false
-            formatter.maximumFractionDigits = 8
-            formatter.minimumFractionDigits = 1
-            return formatter
-        }
-
         case move(x: Double, y: Double)
         case line(x: Double, y: Double)
         case arc(rx: Double, ry: Double, endX: Double, endY: Double, largeArcFlag: Int, sweepFlag: Int)
         case closePath
 
         var string: String {
-            let fmt = Self.numberFormatter
+            let fmt = DecimalFormatting.decimal
             switch self {
             case let .move(x, y):
-                return "M\(fmt.string(from: x as NSNumber)!) \(fmt.string(from: y as NSNumber)!)"
+                return "M\(fmt(x)) \(fmt(y))"
             case let .line(x, y):
-                return "L\(fmt.string(from: x as NSNumber)!) \(fmt.string(from: y as NSNumber)!)"
+                return "L\(fmt(x)) \(fmt(y))"
             case let .arc(rx, ry, endX, endY, largeArcFlag, sweepFlag):
-                return "A\(fmt.string(from: rx as NSNumber)!) \(fmt.string(from: ry as NSNumber)!) 0 \(largeArcFlag) \(sweepFlag) \(fmt.string(from: endX as NSNumber)!) \(fmt.string(from: endY as NSNumber)!)"
+                return "A\(fmt(rx)) \(fmt(ry)) 0 \(largeArcFlag) \(sweepFlag) \(fmt(endX)) \(fmt(endY))"
             case .closePath:
                 return "Z"
             }

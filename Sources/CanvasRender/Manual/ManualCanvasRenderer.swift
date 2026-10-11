@@ -18,38 +18,31 @@ public class ManualCanvasRenderer {
     }
 
     func render(graphicsContext: inout GraphicsContext, frame: CGSize) {
+        render(into: GraphicsContextRenderTarget(context: graphicsContext), frame: frame)
+    }
+
+    /// Draws the shapes into `renderTarget`, which uses the coordinates of a SwiftUI canvas of size `frame`
+    /// (origin top left, y down). The projected 2D space is centered and y-up, so a top view shows world Y upwards.
+    public func render(into renderTarget: RenderTarget, frame: CGSize) {
         let shapes = self.maker.shapes()
 
-        let transform = CGAffineTransform.identity
+        let transform = CGAffineTransform(scaleX: 1, y: -1)
             .concatenating(CGAffineTransform(translationX: frame.width / 2, y: frame.height / 2))
-
-        // zoomTransform.concatenating(translateTransform)
-
-        let renderTarget = GraphicsContextRenderTarget(context: graphicsContext)
 
         let context = RenderContext(canvasSize: Vector2D(frame.width, frame.height),
                                     renderTarget: renderTarget,
                                     transform2d: transform,
                                     transform3d: transformer)
 
-        // renderTarget.setLineCap(.round)
-        // renderTarget.setLineJoin(.round)
         renderTarget.setStrokeColor(context.color.cgColor)
         renderTarget.setLineWidth(context.lineWidth)
 
         shapes.forEach { $0.draw(in: context) }
 
-        /*
-         let mousePos = transformer.unapply(point: mousePos, canvasSize: Vector2D(frame.width, frame.height))
-         Decoration(color: .orange) {
-             Arrow(from: mousePos.point, to: mousePos.point + mousePos.direction.scaled(by: 2))
-         }.draw(in: context)
-         */
-
         // draw frame
         let border = 10.0
         renderTarget.setStrokeColor(CGColor(red: 0, green: 0, blue: 0, alpha: 0.5))
-        renderTarget.beginPath()
+        renderTarget.beginPath(id: nil)
         renderTarget.move(to: CGPoint(x: border, y: border))
         renderTarget.addLine(to: CGPoint(x: frame.width - border, y: border))
         renderTarget.addLine(to: CGPoint(x: frame.width - border, y: frame.height - border))

@@ -75,6 +75,11 @@ public struct Decoration: DrawableShape {
             context.renderTarget.setStrokeColor(resetColor.cgColor)
         }
 
+        // reset line width
+        if let resetLineWidth {
+            context.renderTarget.setLineWidth(CGFloat(resetLineWidth))
+        }
+
         // reset linestyle
         if let resetLineStyle {
             switch resetLineStyle {

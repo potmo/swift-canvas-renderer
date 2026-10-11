@@ -20,8 +20,8 @@ public struct OrbitCounterClockwise: DrawableShape, PartOfPath {
     }
 
     public init(center: simd_double3, radius: Double, startAngle: Double, endAngle: Double, planeNormal: Vector, spokes: Bool = false, arcResolutuon: Double = 0.3) {
-        let lever = planeNormal.arbitraryOrthogonal
-        let point = Quat(angle: startAngle, axis: planeNormal).act(lever)
+        let lever = planeNormal.arbitraryOrthogonal * radius
+        let point = center + Quat(angle: startAngle, axis: planeNormal).act(lever)
         let rotation = Quat(angle: endAngle - startAngle, axis: planeNormal)
 
         self.init(pivot: center, point: point, rotation: rotation, spokes: spokes, arcResolutuon: arcResolutuon)

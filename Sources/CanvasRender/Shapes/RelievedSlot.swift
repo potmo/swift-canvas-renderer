@@ -19,7 +19,7 @@ public struct RelievedSlot: DrawableShape, PartOfPath {
     }
 
     public func draw(in context: RenderContext) {
-        context.renderTarget.beginPath()
+        context.renderTarget.beginPath(id: nil)
         self.drawPartOfPath(in: context)
         context.renderTarget.strokePath()
     }

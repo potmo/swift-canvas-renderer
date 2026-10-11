@@ -67,8 +67,9 @@ public extension Vector {
         return atan2(self.normalized.cross(other.normalized).dot(axis), self.normalized.dot(other.normalized))
     }
 
+    /// The unsigned angle between the vectors, in 0...pi.
     func angleBetween2(and other: Vector) -> Double {
-        return acos(self.dot(other) / (self.length / other.length))
+        return atan2(self.cross(other).length, self.dot(other))
     }
 
     func angleBetween3(and other: Vector, around rotationAxis: Vector) -> Double {
@@ -245,12 +246,19 @@ public extension Vector {
 }
 
 public extension Vector {
+    /// A unit vector orthogonal to this one.
     var arbitraryOrthogonal: Vector {
-        let majorX = (self.x < self.y) && (self.x < self.z) ? 1.0 : 0.0
-        let majorY = (self.y <= self.x) && (self.y < self.z) ? 1.0 : 0.0
-        let majorZ = (self.z <= self.x) && (self.z <= self.y) ? 1.0 : 0.0
-
-        return self.normalized.cross(Vector(majorX, majorY, majorZ))
+        // cross with the axis this vector is least aligned with, which is never parallel to it
+        let magnitude = simd_abs(self)
+        let axis: Vector
+        if magnitude.x < magnitude.y, magnitude.x < magnitude.z {
+            axis = Vector(1, 0, 0)
+        } else if magnitude.y <= magnitude.z {
+            axis = Vector(0, 1, 0)
+        } else {
+            axis = Vector(0, 0, 1)
+        }
+        return self.cross(axis).normalized
     }
 }
 
@@ -303,18 +311,14 @@ public extension Quat {
 }
 
 public extension Quat {
+    /// The rotation of a camera at `eye` looking at `target` (see `PerspectiveCamera`): local Y+ points at
+    /// the target, local Z+ is as close to `up` as possible and local X+ is to the right.
     init(eye: SIMD3<Double>, target: SIMD3<Double>, up: SIMD3<Double>) {
-        // Calculate forward direction (normalized vector pointing from eye to position)
-        let forward = (eye - target).normalized
+        let forward = (target - eye).normalized
+        let right = forward.cross(up).normalized
+        let actualUp = right.cross(forward)
 
-        // Calculate right direction (normalized vector perpendicular to forward and up)
-        let right = up.cross(forward).normalized
-
-        // Calculate actual up direction (perpendicular to forward and right)
-        let actualUp = forward.cross(right)
-
-        // Create a 3x3 rotation matrix to align with the new basis
-        let rotationMatrix = double3x3(columns: (right, forward, -actualUp))
+        let rotationMatrix = double3x3(columns: (right, forward, actualUp))
 
         // Convert the rotation matrix to a quaternion
         let quaternion = simd_quatd(rotationMatrix)
@@ -342,7 +346,7 @@ public extension simd_double4x4 {
 
         let rollRotation = simd_double4x4(rows: [
             simd_double4(cos(roll), -sin(roll), 0, 0),
-            simd_double4(sin(roll), 1, 0, 0),
+            simd_double4(sin(roll), cos(roll), 0, 0),
             simd_double4(0, 0, 1, 0),
             simd_double4(0, 0, 0, 1),
         ])
@@ -387,7 +391,7 @@ public extension simd_double3x3 {
 
         let rollRotation = simd_double3x3(rows: [
             simd_double3(cos(roll), -sin(roll), 0),
-            simd_double3(sin(roll), 1, 0),
+            simd_double3(sin(roll), cos(roll), 0),
             simd_double3(0, 0, 1),
         ])
 
@@ -426,12 +430,7 @@ public extension Quat {
 
 public extension Double {
     func toFixed(_ fractionDigits: Int) -> String {
-        let numberFormatter = NumberFormatter()
-        numberFormatter.maximumFractionDigits = fractionDigits
-        numberFormatter.minimumFractionDigits = fractionDigits
-        numberFormatter.decimalSeparator = "."
-
-        return numberFormatter.string(from: NSNumber(value: self)) ?? "NaN"
+        DecimalFormatting.fixed(self, fractionDigits: fractionDigits)
     }
 }
 
@@ -450,20 +449,8 @@ extension CGPoint {
 }
 
 extension CGFloat {
-    private static var numberFormatter: NumberFormatter {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = false
-        formatter.decimalSeparator = "."
-        formatter.alwaysShowsDecimalSeparator = true
-        formatter.hasThousandSeparators = false
-        formatter.maximumFractionDigits = 8
-        formatter.minimumFractionDigits = 1
-        return formatter
-    }
-
     var formatted: String {
-        return Self.numberFormatter.string(from: self as! NSNumber)!
+        DecimalFormatting.decimal(self)
     }
 }
 

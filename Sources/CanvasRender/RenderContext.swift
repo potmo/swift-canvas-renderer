@@ -40,13 +40,18 @@ public struct RenderContext {
     }
 }
 
+/// Projects world space onto the 2D drawing plane.
+///
+/// World space is CAD-style and right-handed: X+ right, Y+ forward (away from the viewer), Z+ up.
+/// The 2D output is y-up: a top view shows world X to the right and world Y upwards.
 public protocol RenderTransformer {
     func apply(point: Vector, canvasSize: Vector2D) -> Vector2D
     func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray
 
+    /// The direction the camera looks in, in world space.
     var cameraDirection: Vector { get }
 
-    /// special case for paper drawing where camera looks down from z+ towards z- with a orthographic rendering
+    /// Special case for paper drawing: an orthographic top view, looking from Z+ towards Z-.
     var isTopDownOrthographic: Bool { get }
 }
 
@@ -78,7 +83,8 @@ public struct AxisAlignedOrthographicTransform: RenderTransformer {
         case .xz:
             return Vector(0, 1, 0)
         case .yz:
-            return Vector(1, 0, 0)
+            // world Y to the right and Z up means looking from X+ towards X-
+            return Vector(-1, 0, 0)
         }
     }
 }
@@ -101,7 +107,7 @@ public struct OrthographicTransform: RenderTransformer {
     }
 
     public var isTopDownOrthographic: Bool {
-        return cameraDirection.dot(Vector(0, -1, 0)) == 1.0
+        return cameraDirection.dot(Vector(0, 0, -1)) >= 1.0 - 1e-12
     }
 
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
@@ -164,71 +170,55 @@ public struct PerspectiveTransform: RenderTransformer {
         self.camera = camera
     }
 
+    /// Vertical field of view.
+    static let fovY = Double.pi * 0.4
+
     public var cameraDirection: Vector {
         return camera.rotation.act(Vector(0, 1, 0))
     }
 
     public var isTopDownOrthographic: Bool {
-        return cameraDirection.dot(Vector(0, -1, 0)) == 1.0
+        return false
     }
 
+    /// Pixels per unit of view-space distance at depth 1.
+    private func focalLength(canvasSize: Vector2D) -> Double {
+        canvasSize.y * 0.5 / tan(Self.fovY / 2)
+    }
+
+    /// Canvas position (origin at the canvas center, y up) of a world point. Points behind the camera are not
+    /// clipped and end up mirrored through the center.
     public func apply(point: Vector, canvasSize: Vector2D) -> Vector2D {
-        // local to world space
-        let modelMatrix = Matrices.translationMatrix(pos: point)
-        // world space to camera space
-        let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
-        // camera to screen
-        let projectionMatrix = Matrices.perspectiveProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 1, zFar: 20, fovY: .pi * 0.4)
-
-        let clipSpace = projectionMatrix * viewMatrix * modelMatrix
-        // homogenous coordinates to cartesian
-        let cartesian = Vector2D(-clipSpace.columns.3.x / clipSpace.columns.3.w, -clipSpace.columns.3.y / clipSpace.columns.3.w)
-
-        let screenSpace = cartesian * canvasSize
-        return screenSpace
+        let basis = CameraBasis(camera)
+        let relative = point - camera.position
+        let depth = relative.dot(basis.forward)
+        let scale = focalLength(canvasSize: canvasSize) / depth
+        return Vector2D(relative.dot(basis.right) * scale, relative.dot(basis.up) * scale)
     }
 
+    /// The ray from the camera through a canvas position (origin at the canvas center, y up).
     public func unapply(point: Vector2D, canvasSize: Vector2D) -> Ray {
-        let projectionMatrix = Matrices.perspectiveProjectionMatrix(width: canvasSize.x, height: canvasSize.y, zNear: 1, zFar: 20, fovY: .pi * 0.4)
-        let viewMatrix = Matrices.viewSpaceMatrix(eye: camera.position, rotation: camera.rotation)
+        let basis = CameraBasis(camera)
+        let focalLength = focalLength(canvasSize: canvasSize)
+        let direction = basis.forward + basis.right * (point.x / focalLength) + basis.up * (point.y / focalLength)
+        return Ray(point: camera.position, direction: direction.normalized)
+    }
+}
 
-        let matInverse = (projectionMatrix * viewMatrix).inverse
+/// The world-space axes of a camera: it looks along its local Y+, with local X+ to the right and local Z+ up.
+struct CameraBasis {
+    let right: Vector
+    let forward: Vector
+    let up: Vector
 
-        let halfScreenWidth = canvasSize.x * 0.5
-        let halfScreenHeight = canvasSize.y * 0.5
+    init(_ camera: PerspectiveCamera) {
+        self.init(rotation: camera.rotation)
+    }
 
-        let near = SIMD4<Double>(-(point.x - halfScreenWidth) / canvasSize.x,
-                                 -(point.y - halfScreenHeight) / canvasSize.y,
-                                 -0.5,
-                                 1.0)
-        let far = SIMD4<Double>(-(point.x - halfScreenWidth) / canvasSize.x,
-                                -(point.y - halfScreenHeight) / canvasSize.y,
-                                0.5,
-                                1)
-
-        let nearResult = matInverse * near
-        let farResult = matInverse * far
-
-        let scaledNear = Vector(nearResult.x, nearResult.y, nearResult.z) / nearResult.w
-        let scaledFar = Vector(farResult.x, farResult.y, farResult.z) / farResult.w
-
-        let direction = (scaledFar - scaledNear).normalized
-
-        return Ray(point: scaledNear, direction: direction)
-
-        /*
-         let farPoint = 0.0
-         let v = SIMD4<Double>((point.x / canvasSize.x) * 2 - 1.0,
-                               (point.y / canvasSize.y) * 2 - 1.0,
-                               farPoint,
-                               1.0)
-
-         let pos = v * matInverse
-
-         var result = Vector(-pos.x * pos.w,
-                             -pos.y * pos.w,
-                             pos.z * pos.w)
-         */
+    init(rotation: Quat) {
+        self.right = rotation.act(Vector(1, 0, 0))
+        self.forward = rotation.act(Vector(0, 1, 0))
+        self.up = rotation.act(Vector(0, 0, 1))
     }
 }
 
@@ -257,10 +247,12 @@ enum Matrices {
         ])
     }
 
+    /// World space to view space: x right, y up, z along the viewing direction.
     static func viewSpaceMatrix(eye: Vector, rotation: Quat) -> simd_double4x4 {
-        let right = rotation.act(Vector(1, 0, 0))
-        let forward = rotation.act(Vector(0, -1, 0))
-        let up = rotation.act(Vector(0, 0, 1))
+        let basis = CameraBasis(rotation: rotation)
+        let right = basis.right
+        let forward = basis.forward
+        let up = basis.up
 
         let vewMatrix = simd_double4x4(rows: [
             simd_double4(right.x, right.y, right.z, -simd_dot(eye, right)),
@@ -305,26 +297,69 @@ enum Matrices {
         return matrix
     }
 
-    static func perspectiveProjectionMatrix(width: Double, height: Double, zNear: Double, zFar: Double, fovY: Double) -> simd_double4x4 {
-        let aspect = width / height
-        let t = tan(fovY / 2)
-        let x = 1 / (aspect * t)
-        let y = 1 / t
-        let z = -((zFar + zNear) / (zFar - zNear))
-        let w = -((2 * zFar * zNear) / (zFar / zNear))
-        // right handed matrix
-        let matrix = simd_double4x4(rows: [
-            simd_double4(x, 0, 0, 0),
-            simd_double4(0, y, 0, 0),
-            simd_double4(0, 0, z, -1),
-            simd_double4(0, 0, w, 0),
-        ])
-
-        return matrix
-    }
 }
 
+/// A camera in CAD-style world space (X+ right, Y+ forward, Z+ up).
+///
+/// The camera looks along its local Y+, with local X+ to the right and local Z+ up. With the identity
+/// rotation it is a front view: looking along world Y+, world X to the right and world Z up.
 public protocol PerspectiveCamera {
     var rotation: Quat { get }
     var position: Vector { get }
+}
+
+/// A fixed camera, with the standard CAD views as presets.
+public struct Camera: PerspectiveCamera {
+    public var position: Vector
+    public var rotation: Quat
+
+    public init(position: Vector, rotation: Quat) {
+        self.position = position
+        self.rotation = rotation
+    }
+
+    /// A camera at `eye` looking at `target`, oriented so `up` points as far up on screen as possible.
+    public init(eye: Vector, target: Vector, up: Vector = Vector(0, 0, 1)) {
+        self.init(position: eye, rotation: Quat(eye: eye, target: target, up: up))
+    }
+
+    /// Looking down along Z-: X right, Y up.
+    public static func top(target: Vector = .zero, distance: Double = 200) -> Camera {
+        Camera(position: target + Vector(0, 0, distance), rotation: Quat(angle: -.pi / 2, axis: Vector(1, 0, 0)))
+    }
+
+    /// Looking up along Z+: X right, Y down.
+    public static func bottom(target: Vector = .zero, distance: Double = 200) -> Camera {
+        Camera(position: target - Vector(0, 0, distance), rotation: Quat(angle: .pi / 2, axis: Vector(1, 0, 0)))
+    }
+
+    /// Looking along Y+: X right, Z up.
+    public static func front(target: Vector = .zero, distance: Double = 200) -> Camera {
+        Camera(position: target - Vector(0, distance, 0), rotation: .identity)
+    }
+
+    /// Looking along Y-: X left, Z up.
+    public static func back(target: Vector = .zero, distance: Double = 200) -> Camera {
+        Camera(position: target + Vector(0, distance, 0), rotation: Quat(angle: .pi, axis: Vector(0, 0, 1)))
+    }
+
+    /// Looking along X- (from the right side): Y right, Z up.
+    public static func right(target: Vector = .zero, distance: Double = 200) -> Camera {
+        Camera(position: target + Vector(distance, 0, 0), rotation: Quat(angle: .pi / 2, axis: Vector(0, 0, 1)))
+    }
+
+    /// Looking along X+ (from the left side): Y left, Z up.
+    public static func left(target: Vector = .zero, distance: Double = 200) -> Camera {
+        Camera(position: target - Vector(distance, 0, 0), rotation: Quat(angle: -.pi / 2, axis: Vector(0, 0, 1)))
+    }
+}
+
+/// Lets the presets be written as `OrthographicTransform(camera: .top())`.
+public extension PerspectiveCamera where Self == Camera {
+    static func top(target: Vector = .zero, distance: Double = 200) -> Camera { Camera.top(target: target, distance: distance) }
+    static func bottom(target: Vector = .zero, distance: Double = 200) -> Camera { Camera.bottom(target: target, distance: distance) }
+    static func front(target: Vector = .zero, distance: Double = 200) -> Camera { Camera.front(target: target, distance: distance) }
+    static func back(target: Vector = .zero, distance: Double = 200) -> Camera { Camera.back(target: target, distance: distance) }
+    static func right(target: Vector = .zero, distance: Double = 200) -> Camera { Camera.right(target: target, distance: distance) }
+    static func left(target: Vector = .zero, distance: Double = 200) -> Camera { Camera.left(target: target, distance: distance) }
 }
